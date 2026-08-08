@@ -158,20 +158,6 @@
     .current-daily { flex: 0 0 auto; text-align: right; }
     .current-daily span { display: block; color: var(--muted); font-size: 10px; }
     .current-daily strong { display: block; margin-top: 4px; color: var(--green); font-family: Georgia, "Songti SC", serif; font-size: 18px; }
-    .asset-actions { flex: 0 0 auto; display: flex; align-items: center; gap: 14px; }
-    .history-toggle {
-      min-height: 34px;
-      padding: 0 11px;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      background: var(--surface);
-      color: var(--ink);
-      cursor: pointer;
-      font-size: 11px;
-      white-space: nowrap;
-    }
-    .history-toggle:hover { border-color: #b7c1bc; background: #f7f9f7; }
-    .history-toggle[aria-expanded="true"] { border-color: #b9d6c8; color: var(--green); background: var(--green-soft); }
 
     .strategy-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
     .strategy-label { margin-bottom: 11px; color: var(--muted); font-size: 11px; font-weight: 650; }
@@ -196,7 +182,6 @@
     .no-topup { min-height: 100%; display: grid; place-items: center; padding: 24px; border: 1px dashed var(--line); border-radius: 6px; color: var(--muted); font-size: 12px; }
 
     .history-panel { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
-    .history-panel[hidden] { display: none; }
     .history-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 15px; }
     .history-title { margin: 0; font-size: 13px; }
     .history-code { margin-top: 4px; color: var(--muted); font-size: 10px; }
@@ -289,7 +274,6 @@
       .summary-value { font-size: 19px; }
       .asset { padding: 16px 14px; }
       .asset-header { align-items: flex-end; }
-      .asset-actions { width: 100%; justify-content: space-between; }
       .asset-header { flex-wrap: wrap; }
       .current-daily strong { font-size: 16px; }
       .history-head { display: grid; }
@@ -438,11 +422,9 @@
           saveState();
         });
       });
-      document.querySelectorAll('[data-history-toggle]').forEach(button => {
-        button.addEventListener('click', () => toggleHistory(button.dataset.historyToggle));
-      });
       updateSummary();
       renderRetirement();
+      loadAllHistories();
     }
 
     function assetCard(asset) {
@@ -463,35 +445,26 @@
             <div class="asset-heading"><span class="asset-name">${asset.name}</span><span class="weight">${asset.weight}%</span></div>
             <div class="asset-meta"><span>基础 <b>${asset.daily}</b></span><span>年定投 <b>${asset.annual.toLocaleString('zh-CN')} 元</b></span><span>每回撤 <b>${asset.step}%</b> 加一倍</span></div>
           </div>
-          <div class="asset-actions">
-            <div class="current-daily"><span>当前每日定投</span><strong data-current-daily="${asset.id}">${formatDaily(asset)}</strong></div>
-            <button class="history-toggle" type="button" data-history-toggle="${asset.id}" aria-controls="history-${asset.id}" aria-expanded="false">查看走势</button>
-          </div>
+          <div class="current-daily"><span>当前每日定投</span><strong data-current-daily="${asset.id}">${formatDaily(asset)}</strong></div>
         </div>
         <div class="strategy-grid">
           <div><div class="strategy-label">回撤定投阶梯 · 点击记录当前档位</div><div class="ladder" role="radiogroup" aria-label="${asset.name}定投倍数">${choices}</div></div>
           <div><div class="strategy-label">额外补仓计划</div>${topup}</div>
         </div>
-        <section class="history-panel" id="history-${asset.id}" aria-label="${asset.name}历史净值" hidden></section>
+        <section class="history-panel" id="history-${asset.id}" aria-label="${asset.name}历史净值"><div class="history-loading">等待加载历史净值...</div></section>
       </article>`;
     }
 
-    async function toggleHistory(assetId) {
-      const asset = assets.find(item => item.id === assetId);
-      const button = document.querySelector(`[data-history-toggle="${assetId}"]`);
-      const panel = document.querySelector(`#history-${assetId}`);
-      const willOpen = panel.hidden;
-      panel.hidden = !willOpen;
-      button.setAttribute('aria-expanded', String(willOpen));
-      button.textContent = willOpen ? '收起走势' : '查看走势';
-      if (!willOpen) return;
-
-      const entry = historyState.get(assetId);
-      if (entry?.data) {
-        renderHistory(asset);
-        return;
+    async function loadAllHistories() {
+      let nextIndex = 0;
+      async function worker() {
+        while (nextIndex < assets.length) {
+          const asset = assets[nextIndex];
+          nextIndex += 1;
+          await loadHistory(asset);
+        }
       }
-      await loadHistory(asset);
+      await Promise.all([worker(), worker(), worker()]);
     }
 
     async function loadHistory(asset, forceRefresh = false) {
