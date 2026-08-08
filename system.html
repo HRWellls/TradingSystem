@@ -161,25 +161,26 @@
 
     .strategy-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
     .strategy-label { margin-bottom: 11px; color: var(--muted); font-size: 11px; font-weight: 650; }
+    .execution-plan { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 
     .ladder { display: grid; gap: 5px; }
     .ladder-step { position: relative; }
     .ladder-step input { position: absolute; opacity: 0; pointer-events: none; }
-    .ladder-step label { min-height: 38px; display: grid; grid-template-columns: 18px 1fr auto; align-items: center; gap: 9px; padding: 6px 9px; border: 1px solid transparent; border-radius: 6px; color: var(--muted); cursor: pointer; font-size: 12px; }
+    .ladder-step label { min-height: 38px; display: grid; grid-template-columns: 14px max-content max-content; align-items: center; gap: 6px; padding: 6px; border: 1px solid transparent; border-radius: 6px; color: var(--muted); cursor: pointer; font-size: 11px; }
     .ladder-step label:hover { background: #f7f9f7; }
     .ladder-dot { width: 10px; height: 10px; border: 2px solid #aeb8b3; border-radius: 50%; background: var(--surface); box-shadow: 0 0 0 4px var(--surface); }
-    .ladder-step:not(:last-child) .ladder-dot::after { content: ""; position: absolute; top: 26px; left: 13px; width: 1px; height: 22px; background: var(--line); }
-    .ladder-step strong { color: var(--ink); font-size: 12px; }
+    .ladder-step:not(:last-child) .ladder-dot::after { content: ""; position: absolute; top: 26px; left: 10px; width: 1px; height: 22px; background: var(--line); }
+    .ladder-step strong { color: var(--ink); font-size: 11px; white-space: nowrap; }
     .ladder-step input:checked + label { border-color: #b9d6c8; background: var(--green-soft); color: var(--green); font-weight: 650; }
     .ladder-step input:checked + label .ladder-dot { border-color: var(--green); background: var(--green); }
     .ladder-step input:focus-visible + label { outline: 2px solid var(--green); outline-offset: 1px; }
 
-    .topup-chart { display: grid; gap: 9px; }
-    .bar-row { display: grid; grid-template-columns: 70px 1fr 48px; align-items: center; gap: 9px; color: var(--muted); font-size: 11px; }
-    .bar-track { height: 8px; overflow: hidden; border-radius: 2px; background: #edf0ee; }
-    .bar-fill { height: 100%; min-width: 3px; border-radius: 2px; background: var(--green); opacity: .82; }
-    .bar-row b { color: var(--ink); text-align: right; font-size: 11px; }
-    .no-topup { min-height: 100%; display: grid; place-items: center; padding: 24px; border: 1px dashed var(--line); border-radius: 6px; color: var(--muted); font-size: 12px; }
+    .topup-list { display: grid; gap: 7px; }
+    .topup-row { display: grid; grid-template-columns: max-content max-content; align-items: baseline; gap: 6px; min-height: 38px; padding: 8px 6px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+    .topup-row:first-child { padding-top: 0; }
+    .topup-row:last-child { border-bottom: 0; }
+    .topup-row b { color: var(--ink); font-size: 12px; font-weight: 650; white-space: nowrap; }
+    .no-topup { min-height: 120px; display: grid; place-items: center; padding: 20px; border: 1px dashed var(--line); border-radius: 6px; color: var(--muted); font-size: 12px; }
 
     .history-panel { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
     .history-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 15px; }
@@ -212,7 +213,7 @@
     .chart-tooltip[hidden] { display: none; }
     .history-source { margin-top: 7px; color: var(--muted); text-align: right; font-size: 9px; }
 
-    .holdings-panel { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+    .holdings-panel { margin-top: 0; padding-top: 0; border-top: 0; }
     .holdings-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
     .holdings-title { margin: 0; font-size: 13px; }
     .holdings-period { margin-top: 4px; color: var(--muted); font-size: 10px; }
@@ -280,6 +281,7 @@
     @media (max-width: 820px) {
       .principles { grid-template-columns: repeat(2, 1fr); }
       .strategy-grid { grid-template-columns: 1fr; }
+      .execution-plan { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .summary { grid-template-columns: repeat(2, 1fr); }
       .summary-item:last-child { grid-column: 1 / -1; padding-left: 0; border-top: 1px solid var(--line); border-left: 0; }
     }
@@ -297,6 +299,7 @@
       .asset-header { align-items: flex-end; }
       .asset-header { flex-wrap: wrap; }
       .current-daily strong { font-size: 16px; }
+      .execution-plan { grid-template-columns: 1fr; gap: 18px; }
       .history-head { display: grid; }
       .holdings-table th:first-child, .holdings-table td:first-child { width: 30px; padding-inline: 3px; }
       .holdings-table th:nth-child(2), .holdings-table td:nth-child(2) { width: 82px; }
@@ -461,10 +464,7 @@
         return `<div class="ladder-step"><input type="radio" id="${asset.id}-${value}" name="multiple-${asset.id}" data-asset="${asset.id}" value="${value}" ${state[asset.id] === value ? 'checked' : ''}><label for="${asset.id}-${value}"><span class="ladder-dot"></span><span>${condition}</span><strong>${multiple}</strong></label></div>`;
       }).join('');
       const topup = asset.topups
-        ? `<div class="topup-chart">${asset.topups.map(([drawdown, amount]) => {
-            const max = Math.max(...asset.topups.map(item => parseFloat(item[1])));
-            return `<div class="bar-row"><span>回撤 ${drawdown}%</span><div class="bar-track"><div class="bar-fill" style="width:${parseFloat(amount) / max * 100}%"></div></div><b>${amount}</b></div>`;
-          }).join('')}</div>`
+        ? `<div class="topup-list">${asset.topups.map(([drawdown, amount]) => `<div class="topup-row"><span>回撤 ${drawdown}%</span><b>补仓 ${amount}</b></div>`).join('')}</div>`
         : `<div class="no-topup">暂不考虑额外补仓</div>`;
       return `<article class="asset">
         <div class="asset-header">
@@ -475,11 +475,13 @@
           <div class="current-daily"><span>当前每日定投</span><strong data-current-daily="${asset.id}">${formatDaily(asset)}</strong></div>
         </div>
         <div class="strategy-grid">
-          <div><div class="strategy-label">回撤定投阶梯 · 点击记录当前档位</div><div class="ladder" role="radiogroup" aria-label="${asset.name}定投倍数">${choices}</div></div>
-          <div><div class="strategy-label">额外补仓计划</div>${topup}</div>
+          <div class="execution-plan">
+            <div><div class="strategy-label">回撤定投阶梯</div><div class="ladder" role="radiogroup" aria-label="${asset.name}定投倍数">${choices}</div></div>
+            <div><div class="strategy-label">额外补仓计划</div>${topup}</div>
+          </div>
+          <div><section class="holdings-panel" id="holdings-${asset.id}" aria-label="${asset.name}最新公开持仓"><div class="holdings-loading">等待加载最新公开持仓...</div></section></div>
         </div>
         <section class="history-panel" id="history-${asset.id}" aria-label="${asset.name}历史净值"><div class="history-loading">等待加载历史净值...</div></section>
-        <section class="holdings-panel" id="holdings-${asset.id}" aria-label="${asset.name}最新公开持仓"><div class="holdings-loading">等待加载最新公开持仓...</div></section>
       </article>`;
     }
 
