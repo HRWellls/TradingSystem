@@ -550,13 +550,14 @@
       const total = rows.reduce((sum, row) => sum + row.ratio, 0);
       const maximum = Math.max(...rows.map(row => row.ratio));
       const isUnderlyingEtf = entry.data.holdingType === 'underlying-etf';
-      const title = isUnderlyingEtf ? '底层 ETF 持仓' : '最新公开持仓';
+      const isFof = entry.data.holdingType === 'fof';
+      const title = isUnderlyingEtf ? '底层 ETF 持仓' : isFof ? 'FOF 直接基金持仓' : '最新公开持仓';
       const period = isUnderlyingEtf
         ? `${entry.data.underlyingFundName} · ${entry.data.reportPeriod}`
         : entry.data.reportPeriod;
       const body = rows.map((row, index) => `<tr>
         <td>${index + 1}</td>
-        <td class="holding-code">${escapeHtml(row.code || '—')}</td>
+        <td class="holding-code">${escapeHtml(isFof ? row.category.replace(/^基金持仓 · /, '') : row.code || '—')}</td>
         <td class="holding-name">${escapeHtml(row.name)}</td>
         <td><div class="holding-ratio"><span class="holding-ratio-bar"><span class="holding-ratio-fill" style="display:block;width:${row.ratio / maximum * 100}%"></span></span><b>${row.ratio.toFixed(2)}%</b></div></td>
       </tr>`).join('');
@@ -565,7 +566,7 @@
           <div class="holdings-total"><span>所列持仓合计</span>${total.toFixed(2)}%</div>
         </div>
         <table class="holdings-table">
-          <thead><tr><th>序号</th><th>代码</th><th>持仓名称</th><th>占净值</th></tr></thead>
+          <thead><tr><th>序号</th><th>${isFof ? '类型' : '代码'}</th><th>持仓名称</th><th>占净值</th></tr></thead>
           <tbody>${body}</tbody>
         </table>
         <div class="holdings-source">数据来源 ${escapeHtml(entry.data.source)}${entry.data.warning ? ' · 更新失败，当前使用缓存' : ''}</div>`;

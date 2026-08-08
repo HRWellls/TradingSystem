@@ -88,6 +88,8 @@ def discovery_cache_is_fresh(payload):
 
 def number_or_none(value):
     try:
+        if isinstance(value, str):
+            value = value.replace(",", "").replace("%", "").strip()
         number = float(value)
         return number if math.isfinite(number) else None
     except (TypeError, ValueError):
@@ -495,6 +497,71 @@ def extract_target_etf_from_report(code, report):
     }
 
 
+def extract_fof_holdings_from_report(code, report):
+    from io import BytesIO
+    from pypdf import PdfReader
+
+    pdf = request_host(
+        EASTMONEY_PDF_HOST,
+        f"/pdf/H2_{report['ID']}_1.pdf",
+        {},
+        referer=f"https://{EASTMONEY_HOST}/jjgg_{code}_3.html",
+    )
+    if not pdf.startswith(b"%PDF"):
+        raise ValueError("定期报告不是可读取的 PDF")
+    text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf)).pages)
+    marker = re.search(r"3\.9\s*报告期末[^\n]*基金投资明细", text)
+    if not marker:
+        raise ValueError("报告中未找到 FOF 基金投资明细")
+    end_candidates = [text.find("3.10", marker.end()), text.find("§4", marker.end())]
+    ends = [position for position in end_candidates if position >= 0]
+    section = text[marker.start() : min(ends) if ends else len(text)]
+    anchors = list(re.finditer(r"(?m)^\s*(\d{1,2})\s*(?=\n|\s+[A-Z])", section))
+    rows = []
+    categories = "股票型|债券型|混合型|货币型|指数型|商品型|另类投资型"
+    for index, anchor in enumerate(anchors):
+        segment = section[anchor.end() : anchors[index + 1].start() if index + 1 < len(anchors) else len(section)]
+        category_match = re.search(rf"({categories})", segment)
+        if not category_match:
+            continue
+        name = re.sub(r"\s+", " ", segment[: category_match.start()]).strip()
+        numbers = re.findall(r"(?<![A-Za-z])\d[\d,]*\.\d+", segment)
+        if not name or len(numbers) < 2:
+            continue
+        rows.append({
+            "code": "",
+            "name": name,
+            "ratio": number_or_none(numbers[-1]),
+            "shares": None,
+            "marketValue": number_or_none(numbers[-2]),
+            "category": f"基金持仓 · {category_match.group(1)}",
+        })
+    if not rows:
+        raise ValueError("FOF 报告中未找到可解析的基金投资行")
+    report_period = re.search(r"20\d{2}年第[1-4]季度报告|20\d{2}年年度报告", report["TITLE"])
+    return save_holdings_payload(code, {
+        "fundCode": code,
+        "source": "东方财富 / 基金定期报告",
+        "fetchedAt": datetime.now(timezone.utc).isoformat(),
+        "reportPeriod": report_period.group(0) if report_period else report.get("PUBLISHDATEDesc", "最新公开报告期"),
+        "holdingType": "fof",
+        "rows": rows[:10],
+    })
+
+
+def fetch_fof_holdings(code):
+    overview = extract_fund_overview(code)
+    if "FOF" not in overview:
+        raise ValueError("该基金不是 FOF")
+    errors = []
+    for report in list_periodic_reports(code)[:8]:
+        try:
+            return extract_fof_holdings_from_report(code, report)
+        except Exception as error:
+            errors.append(str(error))
+    raise RuntimeError("无法从最近定期报告提取 FOF 持仓：" + "；".join(errors[-3:]))
+
+
 def discover_underlying_etf(code):
     cached = read_discovery_cache(code)
     if cached and discovery_cache_is_fresh(cached):
@@ -545,7 +612,11 @@ def fetch_holdings(code):
             })
             return save_holdings_payload(code, payload)
         except Exception as error:
-            errors.append(f"底层 ETF {underlying[0]}: {error}")
+            errors.append(f"底层 ETF {underlying_code}: {error}")
+    try:
+        return fetch_fof_holdings(code)
+    except Exception as error:
+        errors.append(f"FOF 报告解析: {error}")
     for fetcher in (fetch_holdings_eastmoney_direct, fetch_holdings_akshare, fetch_holdings_sina):
         try:
             return fetcher(code)
