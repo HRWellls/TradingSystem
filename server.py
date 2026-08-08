@@ -18,6 +18,11 @@ HOLDINGS_CACHE_DIR = ROOT / "data" / "fund-holdings"
 CACHE_TTL = timedelta(hours=6)
 HOLDINGS_CACHE_TTL = timedelta(days=1)
 EASTMONEY_HOST = "fundf10.eastmoney.com"
+ETF_UNDERLYING = {
+    "008163": ("515450", "南方标普中国A股大盘红利低波50ETF"),
+    "019547": ("159659", "招商纳斯达克100ETF"),
+    "022436": ("560530", "摩根中证A500ETF"),
+}
 FUND_CODES = {
     "003629",
     "019547",
@@ -386,6 +391,21 @@ def fetch_holdings_sina(code):
 
 def fetch_holdings(code):
     errors = []
+    underlying = ETF_UNDERLYING.get(code)
+    if underlying:
+        try:
+            underlying_code, underlying_name = underlying
+            payload = fetch_holdings_eastmoney_direct(underlying_code)
+            payload.update({
+                "fundCode": code,
+                "holdingType": "underlying-etf",
+                "underlyingFundCode": underlying_code,
+                "underlyingFundName": underlying_name,
+                "source": f"东方财富 · 底层 ETF {underlying_code}",
+            })
+            return save_holdings_payload(code, payload)
+        except Exception as error:
+            errors.append(f"底层 ETF {underlying[0]}: {error}")
     for fetcher in (fetch_holdings_eastmoney_direct, fetch_holdings_akshare, fetch_holdings_sina):
         try:
             return fetcher(code)

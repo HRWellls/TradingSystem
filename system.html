@@ -549,6 +549,11 @@
       }
       const total = rows.reduce((sum, row) => sum + row.ratio, 0);
       const maximum = Math.max(...rows.map(row => row.ratio));
+      const isUnderlyingEtf = entry.data.holdingType === 'underlying-etf';
+      const title = isUnderlyingEtf ? '底层 ETF 持仓' : '最新公开持仓';
+      const period = isUnderlyingEtf
+        ? `${entry.data.underlyingFundName} · ${entry.data.reportPeriod}`
+        : entry.data.reportPeriod;
       const body = rows.map((row, index) => `<tr>
         <td>${index + 1}</td>
         <td class="holding-code">${escapeHtml(row.code || '—')}</td>
@@ -556,7 +561,7 @@
         <td><div class="holding-ratio"><span class="holding-ratio-bar"><span class="holding-ratio-fill" style="display:block;width:${row.ratio / maximum * 100}%"></span></span><b>${row.ratio.toFixed(2)}%</b></div></td>
       </tr>`).join('');
       panel.innerHTML = `<div class="holdings-head">
-          <div><h3 class="holdings-title">最新公开持仓</h3><div class="holdings-period">${escapeHtml(entry.data.reportPeriod)}</div></div>
+          <div><h3 class="holdings-title">${title}</h3><div class="holdings-period">${escapeHtml(period)}</div></div>
           <div class="holdings-total"><span>所列持仓合计</span>${total.toFixed(2)}%</div>
         </div>
         <table class="holdings-table">
