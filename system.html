@@ -158,6 +158,20 @@
     .current-daily { flex: 0 0 auto; text-align: right; }
     .current-daily span { display: block; color: var(--muted); font-size: 10px; }
     .current-daily strong { display: block; margin-top: 4px; color: var(--green); font-family: Georgia, "Songti SC", serif; font-size: 18px; }
+    .asset-actions { flex: 0 0 auto; display: flex; align-items: center; gap: 14px; }
+    .history-toggle {
+      min-height: 34px;
+      padding: 0 11px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--ink);
+      cursor: pointer;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+    .history-toggle:hover { border-color: #b7c1bc; background: #f7f9f7; }
+    .history-toggle[aria-expanded="true"] { border-color: #b9d6c8; color: var(--green); background: var(--green-soft); }
 
     .strategy-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
     .strategy-label { margin-bottom: 11px; color: var(--muted); font-size: 11px; font-weight: 650; }
@@ -180,6 +194,38 @@
     .bar-fill { height: 100%; min-width: 3px; border-radius: 2px; background: var(--green); opacity: .82; }
     .bar-row b { color: var(--ink); text-align: right; font-size: 11px; }
     .no-topup { min-height: 100%; display: grid; place-items: center; padding: 24px; border: 1px dashed var(--line); border-radius: 6px; color: var(--muted); font-size: 12px; }
+
+    .history-panel { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+    .history-panel[hidden] { display: none; }
+    .history-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 15px; }
+    .history-title { margin: 0; font-size: 13px; }
+    .history-code { margin-top: 4px; color: var(--muted); font-size: 10px; }
+    .range-control { display: inline-grid; grid-auto-flow: column; grid-auto-columns: minmax(48px, auto); gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 6px; background: #f5f7f5; }
+    .range-button { min-height: 28px; padding: 0 8px; border: 0; border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; font-size: 10px; }
+    .range-button:hover { color: var(--ink); }
+    .range-button.active { background: var(--surface); color: var(--green); font-weight: 700; box-shadow: 0 1px 4px rgba(20, 32, 27, .1); }
+    .history-loading, .history-error { min-height: 220px; display: grid; place-items: center; color: var(--muted); font-size: 12px; }
+    .history-error { gap: 10px; align-content: center; color: #8f3f31; text-align: center; }
+    .retry-button { padding: 7px 11px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); cursor: pointer; font-size: 11px; }
+    .history-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 12px; border-block: 1px solid var(--line); }
+    .history-stat { padding: 11px 12px 11px 0; }
+    .history-stat + .history-stat { padding-left: 12px; border-left: 1px solid var(--line); }
+    .history-stat span { display: block; color: var(--muted); font-size: 9px; }
+    .history-stat strong { display: block; margin-top: 4px; font-family: Georgia, serif; font-size: 15px; }
+    .history-stat strong.positive { color: #b33a2b; }
+    .history-stat strong.negative { color: var(--green); }
+    .nav-chart-wrap { position: relative; min-height: 250px; }
+    .nav-chart { width: 100%; height: auto; display: block; aspect-ratio: 720 / 250; overflow: visible; }
+    .chart-grid { stroke: #e7ebe8; stroke-width: 1; }
+    .chart-axis-label { fill: var(--muted); font-size: 9px; }
+    .chart-area { fill: var(--green-soft); opacity: .72; }
+    .chart-line { fill: none; stroke: var(--green); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+    .chart-cursor { stroke: #8c9892; stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none; }
+    .chart-point { fill: var(--surface); stroke: var(--green); stroke-width: 2; pointer-events: none; }
+    .chart-hit { fill: transparent; cursor: crosshair; }
+    .chart-tooltip { position: absolute; z-index: 2; min-width: 112px; padding: 7px 9px; border-radius: 5px; background: var(--ink); color: white; font-size: 10px; line-height: 1.55; pointer-events: none; transform: translate(-50%, calc(-100% - 10px)); box-shadow: var(--shadow); }
+    .chart-tooltip[hidden] { display: none; }
+    .history-source { margin-top: 7px; color: var(--muted); text-align: right; font-size: 9px; }
 
     .retirement {
       margin-top: 42px;
@@ -243,7 +289,16 @@
       .summary-value { font-size: 19px; }
       .asset { padding: 16px 14px; }
       .asset-header { align-items: flex-end; }
+      .asset-actions { width: 100%; justify-content: space-between; }
+      .asset-header { flex-wrap: wrap; }
       .current-daily strong { font-size: 16px; }
+      .history-head { display: grid; }
+      .range-control { width: 100%; grid-auto-columns: 1fr; }
+      .range-button { padding-inline: 3px; }
+      .history-stats { grid-template-columns: repeat(2, 1fr); }
+      .history-stat:nth-child(3) { padding-left: 0; border-top: 1px solid var(--line); border-left: 0; }
+      .history-stat:nth-child(4) { border-top: 1px solid var(--line); }
+      .nav-chart-wrap { min-height: 180px; }
       .principles { grid-template-columns: 1fr; }
       .principle { min-height: auto; }
       .principle p { margin-top: 8px; }
@@ -310,15 +365,15 @@
 
   <script>
     const assets = [
-      { id: 'global-multi', region: '美股', name: '摩根全球多元配置', weight: 20, annual: 9000, daily: '6 美元/日', step: 5 },
-      { id: 'sp500', region: '美股', name: '标普500', weight: 15, annual: 7500, daily: '30 元/日', step: 7.5, topups: [[5, '2K'], [10, '3K'], [15, '4K'], [20, '6K'], [25, '8K'], [30, '11K'], [35, '16K'], [40, '23K'], [45, '33K'], [50, '47K']] },
-      { id: 'nasdaq100', region: '美股', name: '纳斯达克100', weight: 10, annual: 5000, daily: '20 元/日', step: 10, topups: [[7.5, '1K'], [15, '1.5K'], [22.5, '2K'], [30, '3K'], [37.5, '4K'], [45, '5.5K'], [52.5, '8K'], [60, '11.5K'], [67.5, '16.5K'], [75, '24K']] },
-      { id: 'global-health', region: '美股', name: '广发全球医疗保健指数', weight: 5, annual: 2500, daily: '10 元/日', step: 7.5 },
-      { id: 'global-consumer', region: '美股', name: '汇添富全球消费行业混合', weight: 5, annual: 2500, daily: '10 元/日', step: 10 },
-      { id: 'japan', region: '日本', name: '摩根日本精选股票', weight: 10, annual: 5000, daily: '20 元/日', step: 10 },
-      { id: 'europe', region: '欧洲', name: '摩根欧洲动力策略股票', weight: 10, annual: 5000, daily: '20 元/日', step: 7.5 },
-      { id: 'dividend-low-vol', region: 'A股', name: '红利低波', weight: 15, annual: 2500, daily: '10 元/日', step: 5, topups: [[5, '2K'], [10, '4K'], [15, '7K'], [20, '11K'], [25, '16K'], [30, '23K']] },
-      { id: 'csi-a500', region: 'A股', name: '中证A500', weight: 10, annual: 5000, daily: '20 元/日', step: 10, topups: [[10, '1K'], [20, '2K'], [30, '4K'], [40, '8K'], [50, '16K']] }
+      { id: 'global-multi', code: '003629', region: '美股', name: '摩根全球多元配置(QDII-FOF)A', weight: 20, annual: 9000, daily: '6 美元/日', step: 5 },
+      { id: 'sp500', code: '017641', region: '美股', name: '摩根标普500指数(QDII)A', weight: 15, annual: 7500, daily: '30 元/日', step: 7.5, topups: [[5, '2K'], [10, '3K'], [15, '4K'], [20, '6K'], [25, '8K'], [30, '11K'], [35, '16K'], [40, '23K'], [45, '33K'], [50, '47K']] },
+      { id: 'nasdaq100', code: '019547', region: '美股', name: '招商纳斯达克100ETF联接(QDII)A', weight: 10, annual: 5000, daily: '20 元/日', step: 10, topups: [[7.5, '1K'], [15, '1.5K'], [22.5, '2K'], [30, '3K'], [37.5, '4K'], [45, '5.5K'], [52.5, '8K'], [60, '11.5K'], [67.5, '16.5K'], [75, '24K']] },
+      { id: 'global-health', code: '000369', region: '美股', name: '广发全球医疗保健指数(QDII)A', weight: 5, annual: 2500, daily: '10 元/日', step: 7.5 },
+      { id: 'global-consumer', code: '006308', region: '美股', name: '汇添富全球消费行业混合(QDII)A', weight: 5, annual: 2500, daily: '10 元/日', step: 10 },
+      { id: 'japan', code: '007280', region: '日本', name: '摩根日本精选股票(QDII)A', weight: 10, annual: 5000, daily: '20 元/日', step: 10 },
+      { id: 'europe', code: '006282', region: '欧洲', name: '摩根欧洲动力策略股票(QDII)A', weight: 10, annual: 5000, daily: '20 元/日', step: 7.5 },
+      { id: 'dividend-low-vol', code: '008163', region: 'A股', name: '南方红利低波50ETF联接A', weight: 15, annual: 2500, daily: '10 元/日', step: 5, topups: [[5, '2K'], [10, '4K'], [15, '7K'], [20, '11K'], [25, '16K'], [30, '23K']] },
+      { id: 'csi-a500', code: '022436', region: 'A股', name: '摩根中证A500ETF联接A', weight: 10, annual: 5000, daily: '20 元/日', step: 10, topups: [[10, '1K'], [20, '2K'], [30, '4K'], [40, '8K'], [50, '16K']] }
     ];
 
     const retirementAssets = [
@@ -335,6 +390,8 @@
     const regions = [...new Set(assets.map(asset => asset.region))];
     const app = document.querySelector('#app');
     const toast = document.querySelector('#toast');
+    const historyRanges = [['1m', '1月'], ['3m', '3月'], ['6m', '6月'], ['1y', '1年'], ['3y', '3年'], ['all', '成立来']];
+    const historyState = new Map();
     let toastTimer;
 
     function loadState() {
@@ -381,6 +438,9 @@
           saveState();
         });
       });
+      document.querySelectorAll('[data-history-toggle]').forEach(button => {
+        button.addEventListener('click', () => toggleHistory(button.dataset.historyToggle));
+      });
       updateSummary();
       renderRetirement();
     }
@@ -403,13 +463,219 @@
             <div class="asset-heading"><span class="asset-name">${asset.name}</span><span class="weight">${asset.weight}%</span></div>
             <div class="asset-meta"><span>基础 <b>${asset.daily}</b></span><span>年定投 <b>${asset.annual.toLocaleString('zh-CN')} 元</b></span><span>每回撤 <b>${asset.step}%</b> 加一倍</span></div>
           </div>
-          <div class="current-daily"><span>当前每日定投</span><strong data-current-daily="${asset.id}">${formatDaily(asset)}</strong></div>
+          <div class="asset-actions">
+            <div class="current-daily"><span>当前每日定投</span><strong data-current-daily="${asset.id}">${formatDaily(asset)}</strong></div>
+            <button class="history-toggle" type="button" data-history-toggle="${asset.id}" aria-controls="history-${asset.id}" aria-expanded="false">查看走势</button>
+          </div>
         </div>
         <div class="strategy-grid">
           <div><div class="strategy-label">回撤定投阶梯 · 点击记录当前档位</div><div class="ladder" role="radiogroup" aria-label="${asset.name}定投倍数">${choices}</div></div>
           <div><div class="strategy-label">额外补仓计划</div>${topup}</div>
         </div>
+        <section class="history-panel" id="history-${asset.id}" aria-label="${asset.name}历史净值" hidden></section>
       </article>`;
+    }
+
+    async function toggleHistory(assetId) {
+      const asset = assets.find(item => item.id === assetId);
+      const button = document.querySelector(`[data-history-toggle="${assetId}"]`);
+      const panel = document.querySelector(`#history-${assetId}`);
+      const willOpen = panel.hidden;
+      panel.hidden = !willOpen;
+      button.setAttribute('aria-expanded', String(willOpen));
+      button.textContent = willOpen ? '收起走势' : '查看走势';
+      if (!willOpen) return;
+
+      const entry = historyState.get(assetId);
+      if (entry?.data) {
+        renderHistory(asset);
+        return;
+      }
+      await loadHistory(asset);
+    }
+
+    async function loadHistory(asset, forceRefresh = false) {
+      const panel = document.querySelector(`#history-${asset.id}`);
+      const previous = historyState.get(asset.id);
+      historyState.set(asset.id, { ...previous, status: 'loading', range: previous?.range || '1y' });
+      panel.innerHTML = `<div class="history-loading">正在获取历史净值...</div>`;
+      try {
+        const response = await fetch(`/api/funds/${asset.code}/history${forceRefresh ? '?refresh=1' : ''}`);
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.detail || payload.error || '数据服务暂时不可用');
+        historyState.set(asset.id, { status: 'ready', range: previous?.range || '1y', data: payload });
+        renderHistory(asset);
+      } catch (error) {
+        const message = friendlyHistoryError(error.message);
+        historyState.set(asset.id, { status: 'error', range: previous?.range || '1y', error: message });
+        panel.innerHTML = `<div class="history-error"><span>${escapeHtml(message)}</span><button class="retry-button" type="button" data-history-retry="${asset.id}">重新加载</button></div>`;
+        panel.querySelector('[data-history-retry]').addEventListener('click', () => loadHistory(asset, true));
+      }
+    }
+
+    function renderHistory(asset) {
+      const entry = historyState.get(asset.id);
+      const panel = document.querySelector(`#history-${asset.id}`);
+      const points = filterHistoryPoints(entry.data.points, entry.range);
+      if (points.length < 2) {
+        panel.innerHTML = `<div class="history-error">该时间范围内没有足够的净值数据</div>`;
+        return;
+      }
+
+      const firstValue = chartValue(points[0]);
+      const latest = points[points.length - 1];
+      const latestValue = chartValue(latest);
+      const returnRate = (latestValue / firstValue - 1) * 100;
+      const values = points.map(chartValue);
+      const low = Math.min(...values);
+      const high = Math.max(...values);
+      const returnClass = returnRate > 0 ? 'positive' : returnRate < 0 ? 'negative' : '';
+      const ranges = historyRanges.map(([value, label]) => `<button type="button" class="range-button ${entry.range === value ? 'active' : ''}" data-history-range="${value}" aria-pressed="${entry.range === value}">${label}</button>`).join('');
+
+      panel.innerHTML = `<div class="history-head">
+          <div><h3 class="history-title">历史净值走势</h3><div class="history-code">基金代码 ${asset.code}</div></div>
+          <div class="range-control" aria-label="走势图时间范围">${ranges}</div>
+        </div>
+        <div class="history-stats">
+          <div class="history-stat"><span>最新单位净值</span><strong>${latest.nav.toFixed(4)}</strong></div>
+          <div class="history-stat"><span>区间收益</span><strong class="${returnClass}">${formatPercent(returnRate)}</strong></div>
+          <div class="history-stat"><span>区间最低</span><strong>${low.toFixed(4)}</strong></div>
+          <div class="history-stat"><span>区间最高</span><strong>${high.toFixed(4)}</strong></div>
+        </div>
+        ${buildChart(asset.id, points)}
+        <div class="history-source">净值日期 ${latest.date} · 数据来源 ${escapeHtml(entry.data.source)}${entry.data.warning ? ' · 当前使用缓存' : ''}</div>`;
+
+      panel.querySelectorAll('[data-history-range]').forEach(button => {
+        button.addEventListener('click', () => {
+          entry.range = button.dataset.historyRange;
+          renderHistory(asset);
+        });
+      });
+      bindChartPointer(asset.id, points);
+    }
+
+    function filterHistoryPoints(points, range) {
+      if (range === 'all' || !points.length) return points;
+      const monthsByRange = { '1m': 1, '3m': 3, '6m': 6, '1y': 12, '3y': 36 };
+      const cutoff = new Date(`${points[points.length - 1].date}T00:00:00`);
+      cutoff.setMonth(cutoff.getMonth() - monthsByRange[range]);
+      return points.filter(point => new Date(`${point.date}T00:00:00`) >= cutoff);
+    }
+
+    function chartValue(point) {
+      return Number.isFinite(point.accumulatedNav) ? point.accumulatedNav : point.nav;
+    }
+
+    function buildChart(assetId, points) {
+      const width = 720;
+      const height = 250;
+      const left = 52;
+      const right = 706;
+      const top = 16;
+      const bottom = 216;
+      const base = chartValue(points[0]);
+      const returns = points.map(point => (chartValue(point) / base - 1) * 100);
+      let minimum = Math.min(...returns);
+      let maximum = Math.max(...returns);
+      const padding = Math.max((maximum - minimum) * .08, .25);
+      minimum -= padding;
+      maximum += padding;
+      const x = index => left + index / Math.max(points.length - 1, 1) * (right - left);
+      const y = value => top + (maximum - value) / (maximum - minimum) * (bottom - top);
+      const chartPoints = downsample(returns, 600);
+      const line = chartPoints.map(item => `${x(item.index).toFixed(2)},${y(item.value).toFixed(2)}`).join(' ');
+      const area = `${left},${bottom} ${line} ${right},${bottom}`;
+      const grid = [0, 1, 2, 3].map(index => {
+        const value = maximum - index / 3 * (maximum - minimum);
+        const vertical = y(value);
+        return `<line class="chart-grid" x1="${left}" y1="${vertical}" x2="${right}" y2="${vertical}"></line><text class="chart-axis-label" x="${left - 7}" y="${vertical + 3}" text-anchor="end">${formatPercent(value)}</text>`;
+      }).join('');
+      return `<div class="nav-chart-wrap" data-chart-wrap="${assetId}">
+          <svg class="nav-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="基金历史累计净值走势图">
+            ${grid}
+            <polygon class="chart-area" points="${area}"></polygon>
+            <polyline class="chart-line" points="${line}"></polyline>
+            <text class="chart-axis-label" x="${left}" y="239">${points[0].date}</text>
+            <text class="chart-axis-label" x="${right}" y="239" text-anchor="end">${points[points.length - 1].date}</text>
+            <line class="chart-cursor" data-chart-cursor x1="${left}" y1="${top}" x2="${left}" y2="${bottom}" hidden></line>
+            <circle class="chart-point" data-chart-point cx="${left}" cy="${y(returns[0])}" r="4" hidden></circle>
+            <rect class="chart-hit" data-chart-hit x="${left}" y="${top}" width="${right - left}" height="${bottom - top}"></rect>
+          </svg>
+          <div class="chart-tooltip" data-chart-tooltip hidden></div>
+        </div>`;
+    }
+
+    function downsample(values, limit) {
+      if (values.length <= limit) return values.map((value, index) => ({ value, index }));
+      const result = [];
+      for (let outputIndex = 0; outputIndex < limit; outputIndex += 1) {
+        const index = Math.round(outputIndex / (limit - 1) * (values.length - 1));
+        result.push({ value: values[index], index });
+      }
+      return result;
+    }
+
+    function bindChartPointer(assetId, points) {
+      const wrap = document.querySelector(`[data-chart-wrap="${assetId}"]`);
+      const svg = wrap.querySelector('svg');
+      const hit = wrap.querySelector('[data-chart-hit]');
+      const cursor = wrap.querySelector('[data-chart-cursor]');
+      const marker = wrap.querySelector('[data-chart-point]');
+      const tooltip = wrap.querySelector('[data-chart-tooltip]');
+      const left = 52;
+      const right = 706;
+      const top = 16;
+      const bottom = 216;
+      const base = chartValue(points[0]);
+      const returns = points.map(point => (chartValue(point) / base - 1) * 100);
+      const rawMinimum = Math.min(...returns);
+      const rawMaximum = Math.max(...returns);
+      const padding = Math.max((rawMaximum - rawMinimum) * .08, .25);
+      const minimum = rawMinimum - padding;
+      const maximum = rawMaximum + padding;
+
+      function move(event) {
+        const rect = svg.getBoundingClientRect();
+        const viewX = (event.clientX - rect.left) / rect.width * 720;
+        const ratio = Math.max(0, Math.min(1, (viewX - left) / (right - left)));
+        const index = Math.round(ratio * (points.length - 1));
+        const x = left + index / (points.length - 1) * (right - left);
+        const y = top + (maximum - returns[index]) / (maximum - minimum) * (bottom - top);
+        cursor.setAttribute('x1', x);
+        cursor.setAttribute('x2', x);
+        cursor.hidden = false;
+        marker.setAttribute('cx', x);
+        marker.setAttribute('cy', y);
+        marker.hidden = false;
+        tooltip.innerHTML = `${points[index].date}<br>单位净值 ${points[index].nav.toFixed(4)}<br>区间 ${formatPercent(returns[index])}`;
+        tooltip.style.left = `${x / 720 * 100}%`;
+        tooltip.style.top = `${y / 250 * 100}%`;
+        tooltip.hidden = false;
+      }
+
+      function leave() {
+        cursor.hidden = true;
+        marker.hidden = true;
+        tooltip.hidden = true;
+      }
+
+      hit.addEventListener('pointermove', move);
+      hit.addEventListener('pointerleave', leave);
+    }
+
+    function formatPercent(value) {
+      return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
+    }
+
+    function friendlyHistoryError(message) {
+      if (/NameResolutionError|Could not resolve|nodename nor servname|Max retries exceeded/i.test(message)) {
+        return '历史数据源无法连接。请检查网络或 DNS 后点击“重新加载”。';
+      }
+      return message.length > 180 ? `${message.slice(0, 177)}...` : message;
     }
 
     function formatDaily(asset) {
