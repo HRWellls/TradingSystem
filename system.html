@@ -150,10 +150,10 @@
     }
 
     .asset-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
-    .asset-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
-    .asset-name { font-size: 15px; font-weight: 650; }
-    .weight { color: var(--green); font-size: 12px; font-weight: 650; }
-    .asset-meta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 7px; color: var(--muted); font-size: 12px; }
+    .asset-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 11px; }
+    .asset-name { font-size: 20px; font-weight: 700; }
+    .weight { color: var(--green); font-size: 13px; font-weight: 700; }
+    .asset-meta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; color: var(--muted); font-size: 13px; }
     .asset-meta b { color: var(--ink); font-weight: 550; }
     .current-daily { flex: 0 0 auto; text-align: right; }
     .current-daily span { display: block; color: var(--muted); font-size: 10px; }
@@ -183,7 +183,8 @@
     .no-topup { min-height: 120px; display: grid; place-items: center; padding: 20px; border: 1px dashed var(--line); border-radius: 6px; color: var(--muted); font-size: 12px; }
 
     .history-panel { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
-    .history-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 15px; }
+    .history-head { margin-bottom: 15px; }
+    .history-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
     .history-title { margin: 0; font-size: 13px; }
     .history-code { margin-top: 4px; color: var(--muted); font-size: 10px; }
     .range-control { display: inline-grid; grid-auto-flow: column; grid-auto-columns: minmax(48px, auto); gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 6px; background: #f5f7f5; }
@@ -193,19 +194,27 @@
     .history-loading, .history-error { min-height: 220px; display: grid; place-items: center; color: var(--muted); font-size: 12px; }
     .history-error { gap: 10px; align-content: center; color: #8f3f31; text-align: center; }
     .retry-button { padding: 7px 11px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); cursor: pointer; font-size: 11px; }
-    .history-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 12px; border-block: 1px solid var(--line); }
-    .history-stat { padding: 11px 12px 11px 0; }
-    .history-stat + .history-stat { padding-left: 12px; border-left: 1px solid var(--line); }
+    .history-body { display: grid; grid-template-columns: minmax(0, 1fr) 220px; align-items: stretch; gap: 24px; }
+    .history-stats { display: grid; grid-template-columns: 1fr; align-content: center; margin: 0; border-block: 1px solid var(--line); }
+    .history-stat { padding: 9px 0; }
+    .history-stat + .history-stat { padding-left: 0; border-top: 1px solid var(--line); border-left: 0; }
     .history-stat span { display: block; color: var(--muted); font-size: 9px; }
     .history-stat strong { display: block; margin-top: 4px; font-family: Georgia, serif; font-size: 15px; }
     .history-stat strong.positive { color: #b33a2b; }
     .history-stat strong.negative { color: var(--green); }
-    .nav-chart-wrap { position: relative; min-height: 250px; }
+    .nav-chart-wrap { position: relative; min-height: 205px; }
     .nav-chart { width: 100%; height: auto; display: block; aspect-ratio: 720 / 250; overflow: visible; }
     .chart-grid { stroke: #e7ebe8; stroke-width: 1; }
     .chart-axis-label { fill: var(--muted); font-size: 9px; }
     .chart-area { fill: var(--green-soft); opacity: .72; }
     .chart-line { fill: none; stroke: var(--green); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+    .chart-drawdown { fill: none; stroke: #b33a2b; stroke-width: 2.6; stroke-linejoin: round; stroke-linecap: round; }
+    .chart-extreme-point { fill: var(--surface); stroke-width: 2.2; pointer-events: none; }
+    .chart-extreme-point.max { stroke: var(--green); }
+    .chart-extreme-point.min { stroke: var(--green); }
+    .chart-extreme-label { font-size: 9px; font-weight: 700; pointer-events: none; }
+    .chart-extreme-label.max { fill: var(--green); }
+    .chart-extreme-label.min { fill: var(--green); }
     .chart-cursor { stroke: #8c9892; stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none; }
     .chart-point { fill: var(--surface); stroke: var(--green); stroke-width: 2; pointer-events: none; }
     .chart-hit { fill: transparent; cursor: crosshair; }
@@ -300,16 +309,19 @@
       .asset-header { flex-wrap: wrap; }
       .current-daily strong { font-size: 16px; }
       .execution-plan { grid-template-columns: 1fr; gap: 18px; }
-      .history-head { display: grid; }
+      .history-title-row { display: grid; gap: 8px; }
       .holdings-table th:first-child, .holdings-table td:first-child { width: 30px; padding-inline: 3px; }
       .holdings-table th:nth-child(2), .holdings-table td:nth-child(2) { width: 82px; }
       .holdings-table th:last-child, .holdings-table td:last-child { width: 62px; padding-inline: 3px; }
       .holding-ratio-bar { display: none; }
       .range-control { width: 100%; grid-auto-columns: 1fr; }
       .range-button { padding-inline: 3px; }
+      .history-body { grid-template-columns: 1fr; gap: 12px; }
       .history-stats { grid-template-columns: repeat(2, 1fr); }
-      .history-stat:nth-child(3) { padding-left: 0; border-top: 1px solid var(--line); border-left: 0; }
-      .history-stat:nth-child(4) { border-top: 1px solid var(--line); }
+      .history-stat { padding: 11px 12px 11px 0; }
+      .history-stat:nth-child(odd) { padding-left: 0; }
+      .history-stat:nth-child(even) { padding-left: 12px; border-left: 1px solid var(--line); }
+      .history-stat:nth-child(n + 3) { border-top: 1px solid var(--line); }
       .nav-chart-wrap { min-height: 180px; }
       .principles { grid-template-columns: 1fr; }
       .principle { min-height: auto; }
@@ -587,22 +599,26 @@
       const latestValue = chartValue(latest);
       const returnRate = (latestValue / firstValue - 1) * 100;
       const values = points.map(chartValue);
-      const low = Math.min(...values);
-      const high = Math.max(...values);
+      const lowIndex = values.indexOf(Math.min(...values));
+      const highIndex = values.indexOf(Math.max(...values));
+      const drawdown = calculateMaxDrawdown(points);
       const returnClass = returnRate > 0 ? 'positive' : returnRate < 0 ? 'negative' : '';
       const ranges = historyRanges.map(([value, label]) => `<button type="button" class="range-button ${entry.range === value ? 'active' : ''}" data-history-range="${value}" aria-pressed="${entry.range === value}">${label}</button>`).join('');
 
       panel.innerHTML = `<div class="history-head">
-          <div><h3 class="history-title">历史净值走势</h3><div class="history-code">基金代码 ${asset.code}</div></div>
-          <div class="range-control" aria-label="走势图时间范围">${ranges}</div>
+          <div class="history-title-row"><h3 class="history-title">历史净值走势</h3><div class="range-control" aria-label="走势图时间范围">${ranges}</div></div>
+          <div class="history-code">基金代码 ${asset.code}</div>
         </div>
-        <div class="history-stats">
-          <div class="history-stat"><span>最新单位净值</span><strong>${latest.nav.toFixed(4)}</strong></div>
-          <div class="history-stat"><span>区间收益</span><strong class="${returnClass}">${formatPercent(returnRate)}</strong></div>
-          <div class="history-stat"><span>区间最低</span><strong>${low.toFixed(4)}</strong></div>
-          <div class="history-stat"><span>区间最高</span><strong>${high.toFixed(4)}</strong></div>
+        <div class="history-body">
+          ${buildChart(asset.id, points)}
+          <div class="history-stats">
+            <div class="history-stat"><span>区间收益</span><strong class="${returnClass}">${formatPercent(returnRate)}</strong></div>
+            <div class="history-stat"><span>最大回撤</span><strong class="negative">${formatPercent(drawdown.rate)}</strong></div>
+            <div class="history-stat"><span>最大回撤修复时间</span><strong>${drawdown.recovery}</strong></div>
+            <div class="history-stat"><span>区间最高点日期</span><strong>${points[highIndex].date}</strong></div>
+            <div class="history-stat"><span>区间最低点日期</span><strong>${points[lowIndex].date}</strong></div>
+          </div>
         </div>
-        ${buildChart(asset.id, points)}
         <div class="history-source">净值日期 ${latest.date} · 数据来源 ${escapeHtml(entry.data.source)}${entry.data.warning ? ' · 当前使用缓存' : ''}</div>`;
 
       panel.querySelectorAll('[data-history-range]').forEach(button => {
@@ -626,6 +642,32 @@
       return Number.isFinite(point.accumulatedNav) ? point.accumulatedNav : point.nav;
     }
 
+    function calculateMaxDrawdown(points) {
+      const values = points.map(chartValue);
+      let peakIndex = 0;
+      let drawdownPeakIndex = 0;
+      let troughIndex = 0;
+      let maximumDrawdown = 0;
+
+      values.forEach((value, index) => {
+        if (value > values[peakIndex]) peakIndex = index;
+        const rate = (value / values[peakIndex] - 1) * 100;
+        if (rate < maximumDrawdown) {
+          maximumDrawdown = rate;
+          drawdownPeakIndex = peakIndex;
+          troughIndex = index;
+        }
+      });
+
+      if (maximumDrawdown === 0) return { rate: 0, recovery: '0 天', peakIndex: 0, troughIndex: 0 };
+      const recoveryIndex = values.findIndex((value, index) => index > troughIndex && value >= values[drawdownPeakIndex]);
+      if (recoveryIndex === -1) return { rate: maximumDrawdown, recovery: '修复中', peakIndex: drawdownPeakIndex, troughIndex };
+      const troughDate = new Date(`${points[troughIndex].date}T00:00:00`);
+      const recoveryDate = new Date(`${points[recoveryIndex].date}T00:00:00`);
+      const recoveryDays = Math.round((recoveryDate - troughDate) / 86400000);
+      return { rate: maximumDrawdown, recovery: `${recoveryDays} 天`, peakIndex: drawdownPeakIndex, troughIndex };
+    }
+
     function buildChart(assetId, points) {
       const width = 720;
       const height = 250;
@@ -644,6 +686,20 @@
       const y = value => top + (maximum - value) / (maximum - minimum) * (bottom - top);
       const chartPoints = downsample(returns, 600);
       const line = chartPoints.map(item => `${x(item.index).toFixed(2)},${y(item.value).toFixed(2)}`).join(' ');
+      const drawdown = calculateMaxDrawdown(points);
+      const drawdownValues = returns.slice(drawdown.peakIndex, drawdown.troughIndex + 1);
+      const drawdownLine = drawdown.rate < 0
+        ? downsample(drawdownValues, 240).map(item => `${x(item.index + drawdown.peakIndex).toFixed(2)},${y(item.value).toFixed(2)}`).join(' ')
+        : '';
+      const highestIndex = returns.indexOf(Math.max(...returns));
+      const lowestIndex = returns.indexOf(Math.min(...returns));
+      const extremeMarker = (index, label, className) => {
+        const markerX = x(index);
+        const markerY = y(returns[index]);
+        const labelY = className === 'max' ? markerY - 9 : markerY + 17;
+        const anchor = markerX < left + 28 ? 'start' : markerX > right - 28 ? 'end' : 'middle';
+        return `<circle class="chart-extreme-point ${className}" cx="${markerX}" cy="${markerY}" r="4"></circle><text class="chart-extreme-label ${className}" x="${markerX}" y="${labelY}" text-anchor="${anchor}">${label}</text>`;
+      };
       const area = `${left},${bottom} ${line} ${right},${bottom}`;
       const grid = [0, 1, 2, 3].map(index => {
         const value = maximum - index / 3 * (maximum - minimum);
@@ -655,6 +711,9 @@
             ${grid}
             <polygon class="chart-area" points="${area}"></polygon>
             <polyline class="chart-line" points="${line}"></polyline>
+            ${drawdownLine ? `<polyline class="chart-drawdown" points="${drawdownLine}"></polyline>` : ''}
+            ${extremeMarker(highestIndex, 'MAX', 'max')}
+            ${extremeMarker(lowestIndex, 'MIN', 'min')}
             <text class="chart-axis-label" x="${left}" y="239">${points[0].date}</text>
             <text class="chart-axis-label" x="${right}" y="239" text-anchor="end">${points[points.length - 1].date}</text>
             <line class="chart-cursor" data-chart-cursor x1="${left}" y1="${top}" x2="${left}" y2="${bottom}" hidden></line>
