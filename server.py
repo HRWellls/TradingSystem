@@ -7,13 +7,17 @@ import math
 import re
 from datetime import datetime, timedelta, timezone
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from io import StringIO
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 
 ROOT = Path(__file__).resolve().parent
 CACHE_DIR = ROOT / "data" / "fund-history"
+HOLDINGS_CACHE_DIR = ROOT / "data" / "fund-holdings"
 CACHE_TTL = timedelta(hours=6)
+HOLDINGS_CACHE_TTL = timedelta(days=1)
+EASTMONEY_HOST = "fundf10.eastmoney.com"
 FUND_CODES = {
     "003629",
     "019547",
@@ -35,10 +39,26 @@ def read_cache(code):
         return None
 
 
+def read_holdings_cache(code):
+    path = HOLDINGS_CACHE_DIR / f"{code}.json"
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+
+
 def cache_is_fresh(payload):
     try:
         fetched_at = datetime.fromisoformat(payload["fetchedAt"])
         return datetime.now(timezone.utc) - fetched_at < CACHE_TTL
+    except (KeyError, TypeError, ValueError):
+        return False
+
+
+def holdings_cache_is_fresh(payload):
+    try:
+        fetched_at = datetime.fromisoformat(payload["fetchedAt"])
+        return datetime.now(timezone.utc) - fetched_at < HOLDINGS_CACHE_TTL
     except (KeyError, TypeError, ValueError):
         return False
 
@@ -67,6 +87,15 @@ def build_payload(code, source, points):
 def save_payload(code, payload):
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     cache_path = CACHE_DIR / f"{code}.json"
+    temporary_path = cache_path.with_suffix(".tmp")
+    temporary_path.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    temporary_path.replace(cache_path)
+    return payload
+
+
+def save_holdings_payload(code, payload):
+    HOLDINGS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cache_path = HOLDINGS_CACHE_DIR / f"{code}.json"
     temporary_path = cache_path.with_suffix(".tmp")
     temporary_path.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     temporary_path.replace(cache_path)
@@ -161,6 +190,223 @@ def fetch_history(code):
     raise RuntimeError("；".join(errors))
 
 
+def normalize_holdings_frame(frame, source):
+    required = {"股票代码", "股票名称", "占净值比例"}
+    if frame is None or frame.empty or not required.issubset(frame.columns):
+        raise ValueError("数据源未返回可解析的股票或基金持仓")
+    rows = []
+    for _, row in frame.iterrows():
+        name = str(row.get("股票名称", "")).strip()
+        code = str(row.get("股票代码", "")).strip()
+        ratio = number_or_none(row.get("占净值比例"))
+        if not name or name == "nan" or ratio is None:
+            continue
+        rows.append({
+            "code": code if code != "nan" else "",
+            "name": name,
+            "ratio": ratio,
+            "shares": number_or_none(row.get("持股数")),
+            "marketValue": number_or_none(row.get("持仓市值")),
+            "category": "股票/基金持仓",
+        })
+    if not rows:
+        raise ValueError("数据源返回了空的可解析持仓")
+    return rows
+
+
+def latest_report_period(periods):
+    def sort_key(period):
+        match = re.search(r"(20\d{2})年([1-4])季度", str(period))
+        return (int(match.group(1)), int(match.group(2))) if match else (-1, -1)
+
+    return max(periods, key=sort_key) if periods else "最新公开报告期"
+
+
+def resolve_host_over_https(host):
+    """Resolve a blocked DNS name without weakening TLS certificate checks."""
+    import requests
+
+    for resolver in ("https://cloudflare-dns.com/dns-query", "https://dns.google/resolve"):
+        try:
+            response = requests.get(
+                resolver,
+                params={"name": host, "type": "A"},
+                headers={"Accept": "application/dns-json", "User-Agent": "Mozilla/5.0"},
+                timeout=8,
+            )
+            response.raise_for_status()
+            addresses = [answer.get("data") for answer in response.json().get("Answer", [])]
+            addresses = [address for address in addresses if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", str(address or ""))]
+            if addresses:
+                return addresses
+        except Exception:
+            continue
+    raise RuntimeError(f"无法通过备用 DNS 解析 {host}")
+
+
+def request_eastmoney(path, params):
+    import requests
+    import urllib3
+
+    headers = {
+        "Accept": "*/*",
+        "Referer": f"https://{EASTMONEY_HOST}/",
+        "User-Agent": "Mozilla/5.0",
+        "X-Requested-With": "XMLHttpRequest",
+    }
+    url = f"https://{EASTMONEY_HOST}{path}"
+    try:
+        response = requests.get(url, params=params, headers=headers, timeout=20)
+        response.raise_for_status()
+        return response.text
+    except requests.RequestException as original_error:
+        last_error = original_error
+        query = "&".join(f"{key}={value}" for key, value in params.items())
+        request_path = f"{path}?{query}"
+        for address in resolve_host_over_https(EASTMONEY_HOST):
+            try:
+                pool = urllib3.HTTPSConnectionPool(
+                    address,
+                    port=443,
+                    assert_hostname=EASTMONEY_HOST,
+                    server_hostname=EASTMONEY_HOST,
+                    timeout=20,
+                    cert_reqs="CERT_REQUIRED",
+                )
+                result = pool.request(
+                    "GET",
+                    request_path,
+                    headers={**headers, "Host": EASTMONEY_HOST},
+                )
+                if result.status >= 400:
+                    raise RuntimeError(f"HTTP {result.status}")
+                return result.data.decode("utf-8", errors="replace")
+            except Exception as error:
+                last_error = error
+        raise RuntimeError(f"东方财富请求失败：{last_error}") from original_error
+
+
+def fetch_holdings_eastmoney_direct(code):
+    import pandas as pd
+    from akshare.utils import demjson
+    from bs4 import BeautifulSoup
+
+    text = request_eastmoney(
+        "/FundArchivesDatas.aspx",
+        {"type": "jjcc", "code": code, "topline": "100", "year": "", "month": ""},
+    )
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end <= start:
+        raise ValueError("东方财富持仓返回格式无法识别")
+    payload = demjson.decode(text[start : end + 1])
+    content = payload.get("content", "") if isinstance(payload, dict) else ""
+    if not content:
+        raise ValueError("东方财富未披露可解析的股票或基金持仓")
+
+    soup = BeautifulSoup(content, features="lxml")
+    labels = [item.get_text(" ", strip=True) for item in soup.find_all(name="h4", attrs={"class": "t"})]
+    tables = pd.read_html(StringIO(content), converters={"股票代码": str})
+    frames = []
+    for index, table in enumerate(tables):
+        if not {"股票代码", "股票名称"}.issubset(table.columns):
+            continue
+        ratio_column = next((column for column in table.columns if "占净值" in str(column)), None)
+        if ratio_column is None:
+            continue
+        table = table.rename(columns={
+            ratio_column: "占净值比例",
+            next((column for column in table.columns if "持股数" in str(column)), "持股数"): "持股数",
+            next((column for column in table.columns if "持仓市值" in str(column)), "持仓市值"): "持仓市值",
+        })
+        table["占净值比例"] = table["占净值比例"].astype(str).str.replace("%", "", regex=False)
+        table["季度"] = labels[index] if index < len(labels) else "最新公开报告期"
+        frames.append(table)
+    if not frames:
+        raise ValueError("东方财富未披露可解析的股票或基金持仓")
+    frame = pd.concat(frames, ignore_index=True)
+    periods = [str(value).strip() for value in frame["季度"].dropna().unique()]
+    report_period = latest_report_period(periods)
+    frame = frame[frame["季度"].astype(str).str.strip() == report_period]
+    rows = normalize_holdings_frame(frame, "东方财富")
+    rows.sort(key=lambda item: item["ratio"], reverse=True)
+    report_match = re.search(r"20\d{2}年[1-4]季度", report_period)
+    return save_holdings_payload(code, {
+        "fundCode": code,
+        "source": "东方财富",
+        "fetchedAt": datetime.now(timezone.utc).isoformat(),
+        "reportPeriod": report_match.group(0) if report_match else report_period,
+        "rows": rows[:10],
+    })
+
+
+def fetch_holdings_akshare(code):
+    import akshare as ak
+
+    frame = ak.fund_portfolio_hold_em(symbol=code, date="")
+    rows = normalize_holdings_frame(frame, "AKShare / 东方财富")
+    report_period = "最新公开报告期"
+    if "季度" in frame.columns and not frame["季度"].dropna().empty:
+        periods = [str(value).strip() for value in frame["季度"].dropna().unique()]
+        report_period = latest_report_period(periods)
+        frame = frame[frame["季度"].astype(str).str.strip() == report_period]
+        rows = normalize_holdings_frame(frame, "AKShare / 东方财富")
+    rows.sort(key=lambda item: item["ratio"], reverse=True)
+    return save_holdings_payload(code, {
+        "fundCode": code,
+        "source": "AKShare / 东方财富",
+        "fetchedAt": datetime.now(timezone.utc).isoformat(),
+        "reportPeriod": report_period,
+        "rows": rows[:10],
+    })
+
+
+def fetch_holdings_sina(code):
+    import pandas as pd
+    import requests
+
+    url = "https://stock.finance.sina.com.cn/fundInfo/view/FundInfo_CGMX.php"
+    response = requests.get(url, params={"symbol": code}, headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
+    response.raise_for_status()
+    tables = pd.read_html(response.content)
+    frame = next((table for table in tables if {"证券代码", "证券简称", "占基金净值比(%)"}.issubset(table.columns)), None)
+    if frame is None:
+        raise ValueError("新浪财经未披露可解析的股票持仓")
+    frame = frame.rename(columns={"证券代码": "股票代码", "证券简称": "股票名称", "占基金净值比(%)": "占净值比例"})
+    rows = normalize_holdings_frame(frame, "新浪财经")
+    rows.sort(key=lambda item: item["ratio"], reverse=True)
+    return save_holdings_payload(code, {
+        "fundCode": code,
+        "source": "新浪财经",
+        "fetchedAt": datetime.now(timezone.utc).isoformat(),
+        "reportPeriod": "最新公开报告期",
+        "rows": rows[:10],
+    })
+
+
+def fetch_holdings(code):
+    errors = []
+    for fetcher in (fetch_holdings_eastmoney_direct, fetch_holdings_akshare, fetch_holdings_sina):
+        try:
+            return fetcher(code)
+        except Exception as error:
+            errors.append(f"{fetcher.__name__}: {error}")
+    raise RuntimeError("；".join(errors))
+
+
+def get_holdings(code, force_refresh=False):
+    cached = read_holdings_cache(code)
+    if cached and not force_refresh and holdings_cache_is_fresh(cached):
+        return cached
+    try:
+        return fetch_holdings(code)
+    except Exception as error:
+        if cached:
+            cached["warning"] = f"更新失败，正在使用缓存数据：{error}"
+            return cached
+        raise
+
+
 def get_history(code, force_refresh=False):
     cached = read_cache(code)
     if cached and not force_refresh and cache_is_fresh(cached):
@@ -200,6 +446,18 @@ class TradingSystemHandler(SimpleHTTPRequestHandler):
                 self.send_json(200, get_history(code, force_refresh))
             except Exception as error:
                 self.send_json(502, {"error": "历史净值获取失败", "detail": str(error)})
+            return
+        match = re.fullmatch(r"/api/funds/(\d{6})/holdings", parsed.path)
+        if match:
+            code = match.group(1)
+            if code not in FUND_CODES:
+                self.send_json(404, {"error": "该基金未配置"})
+                return
+            force_refresh = parse_qs(parsed.query).get("refresh") == ["1"]
+            try:
+                self.send_json(200, get_holdings(code, force_refresh))
+            except Exception as error:
+                self.send_json(502, {"error": "基金持仓获取失败", "detail": str(error)})
             return
         if parsed.path == "/":
             self.path = "/system.html"

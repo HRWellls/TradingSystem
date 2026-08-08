@@ -212,6 +212,27 @@
     .chart-tooltip[hidden] { display: none; }
     .history-source { margin-top: 7px; color: var(--muted); text-align: right; font-size: 9px; }
 
+    .holdings-panel { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+    .holdings-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+    .holdings-title { margin: 0; font-size: 13px; }
+    .holdings-period { margin-top: 4px; color: var(--muted); font-size: 10px; }
+    .holdings-total { color: var(--green); font-family: Georgia, serif; font-size: 15px; white-space: nowrap; }
+    .holdings-total span { display: block; margin-bottom: 3px; color: var(--muted); font-family: inherit; font-size: 9px; }
+    .holdings-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+    .holdings-table th, .holdings-table td { padding: 9px 8px; border-bottom: 1px solid var(--line); text-align: left; font-size: 11px; }
+    .holdings-table th { padding-top: 0; color: var(--muted); font-size: 9px; font-weight: 600; }
+    .holdings-table th:first-child, .holdings-table td:first-child { width: 42px; color: var(--muted); text-align: center; }
+    .holdings-table th:nth-child(2), .holdings-table td:nth-child(2) { width: 110px; }
+    .holdings-table th:last-child, .holdings-table td:last-child { width: 92px; text-align: right; }
+    .holding-name { overflow-wrap: anywhere; font-weight: 600; }
+    .holding-code { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .holding-ratio { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+    .holding-ratio-bar { width: 42px; height: 5px; overflow: hidden; border-radius: 2px; background: #edf0ee; }
+    .holding-ratio-fill { height: 100%; background: var(--green); }
+    .holdings-loading, .holdings-error { min-height: 120px; display: grid; place-items: center; color: var(--muted); font-size: 12px; }
+    .holdings-error { gap: 10px; align-content: center; color: #8f3f31; text-align: center; }
+    .holdings-source { margin-top: 7px; color: var(--muted); text-align: right; font-size: 9px; }
+
     .retirement {
       margin-top: 42px;
       padding-top: 30px;
@@ -277,6 +298,10 @@
       .asset-header { flex-wrap: wrap; }
       .current-daily strong { font-size: 16px; }
       .history-head { display: grid; }
+      .holdings-table th:first-child, .holdings-table td:first-child { width: 30px; padding-inline: 3px; }
+      .holdings-table th:nth-child(2), .holdings-table td:nth-child(2) { width: 82px; }
+      .holdings-table th:last-child, .holdings-table td:last-child { width: 62px; padding-inline: 3px; }
+      .holding-ratio-bar { display: none; }
       .range-control { width: 100%; grid-auto-columns: 1fr; }
       .range-button { padding-inline: 3px; }
       .history-stats { grid-template-columns: repeat(2, 1fr); }
@@ -376,6 +401,7 @@
     const toast = document.querySelector('#toast');
     const historyRanges = [['1m', '1月'], ['3m', '3月'], ['6m', '6月'], ['1y', '1年'], ['3y', '3年'], ['all', '成立来']];
     const historyState = new Map();
+    const holdingsState = new Map();
     let toastTimer;
 
     function loadState() {
@@ -425,6 +451,7 @@
       updateSummary();
       renderRetirement();
       loadAllHistories();
+      loadAllHoldings();
     }
 
     function assetCard(asset) {
@@ -452,6 +479,7 @@
           <div><div class="strategy-label">额外补仓计划</div>${topup}</div>
         </div>
         <section class="history-panel" id="history-${asset.id}" aria-label="${asset.name}历史净值"><div class="history-loading">等待加载历史净值...</div></section>
+        <section class="holdings-panel" id="holdings-${asset.id}" aria-label="${asset.name}最新公开持仓"><div class="holdings-loading">等待加载最新公开持仓...</div></section>
       </article>`;
     }
 
@@ -465,6 +493,63 @@
         }
       }
       await Promise.all([worker(), worker(), worker()]);
+    }
+
+    async function loadAllHoldings() {
+      let nextIndex = 0;
+      async function worker() {
+        while (nextIndex < assets.length) {
+          const asset = assets[nextIndex];
+          nextIndex += 1;
+          await loadHoldings(asset);
+        }
+      }
+      await Promise.all([worker(), worker(), worker()]);
+    }
+
+    async function loadHoldings(asset, forceRefresh = false) {
+      const panel = document.querySelector(`#holdings-${asset.id}`);
+      holdingsState.set(asset.id, { status: 'loading' });
+      panel.innerHTML = `<div class="holdings-loading">正在获取最新公开持仓...</div>`;
+      try {
+        const response = await fetch(`/api/funds/${asset.code}/holdings${forceRefresh ? '?refresh=1' : ''}`);
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.detail || payload.error || '持仓数据服务暂时不可用');
+        holdingsState.set(asset.id, { status: 'ready', data: payload });
+        renderHoldings(asset);
+      } catch (error) {
+        const message = friendlyHoldingsError(error.message);
+        holdingsState.set(asset.id, { status: 'error', error: message });
+        panel.innerHTML = `<div class="holdings-error"><span>${escapeHtml(message)}</span><button class="retry-button" type="button" data-holdings-retry="${asset.id}">重新加载</button></div>`;
+        panel.querySelector('[data-holdings-retry]').addEventListener('click', () => loadHoldings(asset, true));
+      }
+    }
+
+    function renderHoldings(asset) {
+      const entry = holdingsState.get(asset.id);
+      const panel = document.querySelector(`#holdings-${asset.id}`);
+      const rows = entry.data.rows || [];
+      if (!rows.length) {
+        panel.innerHTML = `<div class="holdings-error">该基金暂无可展示的公开持仓</div>`;
+        return;
+      }
+      const total = rows.reduce((sum, row) => sum + row.ratio, 0);
+      const maximum = Math.max(...rows.map(row => row.ratio));
+      const body = rows.map((row, index) => `<tr>
+        <td>${index + 1}</td>
+        <td class="holding-code">${escapeHtml(row.code || '—')}</td>
+        <td class="holding-name">${escapeHtml(row.name)}</td>
+        <td><div class="holding-ratio"><span class="holding-ratio-bar"><span class="holding-ratio-fill" style="display:block;width:${row.ratio / maximum * 100}%"></span></span><b>${row.ratio.toFixed(2)}%</b></div></td>
+      </tr>`).join('');
+      panel.innerHTML = `<div class="holdings-head">
+          <div><h3 class="holdings-title">最新公开持仓</h3><div class="holdings-period">${escapeHtml(entry.data.reportPeriod)}</div></div>
+          <div class="holdings-total"><span>所列持仓合计</span>${total.toFixed(2)}%</div>
+        </div>
+        <table class="holdings-table">
+          <thead><tr><th>序号</th><th>代码</th><th>持仓名称</th><th>占净值</th></tr></thead>
+          <tbody>${body}</tbody>
+        </table>
+        <div class="holdings-source">数据来源 ${escapeHtml(entry.data.source)}${entry.data.warning ? ' · 更新失败，当前使用缓存' : ''}</div>`;
     }
 
     async function loadHistory(asset, forceRefresh = false) {
@@ -647,6 +732,16 @@
     function friendlyHistoryError(message) {
       if (/NameResolutionError|Could not resolve|nodename nor servname|Max retries exceeded/i.test(message)) {
         return '历史数据源无法连接。请检查网络或 DNS 后点击“重新加载”。';
+      }
+      return message.length > 180 ? `${message.slice(0, 177)}...` : message;
+    }
+
+    function friendlyHoldingsError(message) {
+      if (/NameResolutionError|Could not resolve|nodename nor servname|Max retries exceeded/i.test(message)) {
+        return '持仓数据源暂时无法连接；首次成功获取后将自动使用本地缓存。';
+      }
+      if (/未披露|空的可解析持仓|未返回可解析/i.test(message)) {
+        return '数据源尚未提供这支基金可解析的最新持仓。';
       }
       return message.length > 180 ? `${message.slice(0, 177)}...` : message;
     }
