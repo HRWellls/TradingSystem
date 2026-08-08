@@ -15,14 +15,14 @@ from urllib.parse import parse_qs, urlparse
 ROOT = Path(__file__).resolve().parent
 CACHE_DIR = ROOT / "data" / "fund-history"
 HOLDINGS_CACHE_DIR = ROOT / "data" / "fund-holdings"
+DISCOVERY_CACHE_DIR = ROOT / "data" / "fund-discovery"
 CACHE_TTL = timedelta(hours=6)
 HOLDINGS_CACHE_TTL = timedelta(days=1)
+DISCOVERY_CACHE_TTL = timedelta(days=30)
+DISCOVERY_CACHE_VERSION = 2
 EASTMONEY_HOST = "fundf10.eastmoney.com"
-ETF_UNDERLYING = {
-    "008163": ("515450", "南方标普中国A股大盘红利低波50ETF"),
-    "019547": ("159659", "招商纳斯达克100ETF"),
-    "022436": ("560530", "摩根中证A500ETF"),
-}
+EASTMONEY_API_HOST = "api.fund.eastmoney.com"
+EASTMONEY_PDF_HOST = "pdf.dfcfw.com"
 FUND_CODES = {
     "003629",
     "019547",
@@ -52,6 +52,14 @@ def read_holdings_cache(code):
         return None
 
 
+def read_discovery_cache(code):
+    path = DISCOVERY_CACHE_DIR / f"{code}.json"
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+
+
 def cache_is_fresh(payload):
     try:
         fetched_at = datetime.fromisoformat(payload["fetchedAt"])
@@ -64,6 +72,16 @@ def holdings_cache_is_fresh(payload):
     try:
         fetched_at = datetime.fromisoformat(payload["fetchedAt"])
         return datetime.now(timezone.utc) - fetched_at < HOLDINGS_CACHE_TTL
+    except (KeyError, TypeError, ValueError):
+        return False
+
+
+def discovery_cache_is_fresh(payload):
+    try:
+        if payload.get("version") != DISCOVERY_CACHE_VERSION:
+            return False
+        fetched_at = datetime.fromisoformat(payload["fetchedAt"])
+        return datetime.now(timezone.utc) - fetched_at < DISCOVERY_CACHE_TTL
     except (KeyError, TypeError, ValueError):
         return False
 
@@ -101,6 +119,15 @@ def save_payload(code, payload):
 def save_holdings_payload(code, payload):
     HOLDINGS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
     cache_path = HOLDINGS_CACHE_DIR / f"{code}.json"
+    temporary_path = cache_path.with_suffix(".tmp")
+    temporary_path.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    temporary_path.replace(cache_path)
+    return payload
+
+
+def save_discovery_payload(code, payload):
+    DISCOVERY_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cache_path = DISCOVERY_CACHE_DIR / f"{code}.json"
     temporary_path = cache_path.with_suffix(".tmp")
     temporary_path.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     temporary_path.replace(cache_path)
@@ -249,46 +276,51 @@ def resolve_host_over_https(host):
     raise RuntimeError(f"无法通过备用 DNS 解析 {host}")
 
 
-def request_eastmoney(path, params):
+def request_host(host, path, params=None, referer=None):
     import requests
     import urllib3
 
+    params = params or {}
     headers = {
         "Accept": "*/*",
-        "Referer": f"https://{EASTMONEY_HOST}/",
+        "Referer": referer or f"https://{host}/",
         "User-Agent": "Mozilla/5.0",
         "X-Requested-With": "XMLHttpRequest",
     }
-    url = f"https://{EASTMONEY_HOST}{path}"
+    url = f"https://{host}{path}"
     try:
         response = requests.get(url, params=params, headers=headers, timeout=20)
         response.raise_for_status()
-        return response.text
+        return response.content
     except requests.RequestException as original_error:
         last_error = original_error
         query = "&".join(f"{key}={value}" for key, value in params.items())
         request_path = f"{path}?{query}"
-        for address in resolve_host_over_https(EASTMONEY_HOST):
+        for address in resolve_host_over_https(host):
             try:
                 pool = urllib3.HTTPSConnectionPool(
                     address,
                     port=443,
-                    assert_hostname=EASTMONEY_HOST,
-                    server_hostname=EASTMONEY_HOST,
+                    assert_hostname=host,
+                    server_hostname=host,
                     timeout=20,
                     cert_reqs="CERT_REQUIRED",
                 )
                 result = pool.request(
                     "GET",
                     request_path,
-                    headers={**headers, "Host": EASTMONEY_HOST},
+                    headers={**headers, "Host": host},
                 )
                 if result.status >= 400:
                     raise RuntimeError(f"HTTP {result.status}")
-                return result.data.decode("utf-8", errors="replace")
+                return result.data
             except Exception as error:
                 last_error = error
-        raise RuntimeError(f"东方财富请求失败：{last_error}") from original_error
+        raise RuntimeError(f"{host} 请求失败：{last_error}") from original_error
+
+
+def request_eastmoney(path, params):
+    return request_host(EASTMONEY_HOST, path, params).decode("utf-8", errors="replace")
 
 
 def fetch_holdings_eastmoney_direct(code):
@@ -389,12 +421,120 @@ def fetch_holdings_sina(code):
     })
 
 
+def extract_fund_overview(code):
+    from bs4 import BeautifulSoup
+
+    html = request_eastmoney(f"/jbgk_{code}.html", {})
+    text = re.sub(r"\s+", "", BeautifulSoup(html, features="lxml").get_text(" ", strip=True))
+    if not text:
+        raise ValueError("基金基本概况为空")
+    return text
+
+
+def list_periodic_reports(code):
+    raw = request_host(
+        EASTMONEY_API_HOST,
+        "/f10/JJGG",
+        {
+            "fundcode": code,
+            "pageIndex": "1",
+            "pageSize": "1000",
+            "type": "3",
+            "_": int(datetime.now(timezone.utc).timestamp() * 1000),
+        },
+        referer=f"https://{EASTMONEY_HOST}/jjgg_{code}_3.html",
+    )
+    payload = json.loads(raw.decode("utf-8"))
+    reports = payload.get("Data")
+    if not isinstance(reports, list):
+        raise ValueError("定期报告列表格式无法识别")
+    return sorted(
+        [report for report in reports if report.get("ID") and report.get("TITLE")],
+        key=lambda report: str(report.get("PUBLISHDATE", "")),
+        reverse=True,
+    )
+
+
+def extract_target_etf_from_report(code, report):
+    from io import BytesIO
+    from pypdf import PdfReader
+
+    report_id = report["ID"]
+    pdf = request_host(
+        EASTMONEY_PDF_HOST,
+        f"/pdf/H2_{report_id}_1.pdf",
+        {},
+        referer=f"https://{EASTMONEY_HOST}/jjgg_{code}_3.html",
+    )
+    if not pdf.startswith(b"%PDF"):
+        raise ValueError("定期报告不是可读取的 PDF")
+    reader = PdfReader(BytesIO(pdf))
+    text = "\n".join(page.extract_text() or "" for page in reader.pages)
+    marker = re.search(r"目标基金基本情况", text)
+    if not marker:
+        raise ValueError("报告中未找到目标基金基本情况")
+    section = text[marker.start() : marker.start() + 5000]
+    code_match = re.search(r"基金主代码\s*[:：]?\s*(\d{6})", section)
+    name_match = re.search(r"基金名称\s+(.+?)基金主代码", section, re.S)
+    if not code_match:
+        raise ValueError("报告中未找到目标基金代码")
+    target_code = code_match.group(1)
+    target_name = re.sub(r"\s+", "", name_match.group(1)) if name_match else ""
+    if target_code == code:
+        raise ValueError("报告中的目标基金代码与联接基金自身相同")
+    target_overview = extract_fund_overview(target_code)
+    if "交易型开放式" not in target_overview:
+        raise ValueError(f"目标代码 {target_code} 未通过 ETF 类型校验")
+    return {
+        "isEtfLink": True,
+        "underlyingFundCode": target_code,
+        "underlyingFundName": target_name or target_code,
+        "reportTitle": report.get("TITLE", ""),
+        "reportId": report_id,
+        "reportDate": report.get("PUBLISHDATEDesc", ""),
+    }
+
+
+def discover_underlying_etf(code):
+    cached = read_discovery_cache(code)
+    if cached and discovery_cache_is_fresh(cached):
+        return cached if cached.get("isEtfLink") else None
+
+    overview = extract_fund_overview(code)
+    if "ETF联接" not in overview and "ETF发起式联接" not in overview:
+        payload = save_discovery_payload(code, {
+            "fundCode": code,
+            "isEtfLink": False,
+            "version": DISCOVERY_CACHE_VERSION,
+            "fetchedAt": datetime.now(timezone.utc).isoformat(),
+        })
+        return None
+
+    reports = list_periodic_reports(code)
+    errors = []
+    for report in reports[:8]:
+        try:
+            payload = extract_target_etf_from_report(code, report)
+            payload["fundCode"] = code
+            payload["version"] = DISCOVERY_CACHE_VERSION
+            payload["fetchedAt"] = datetime.now(timezone.utc).isoformat()
+            return save_discovery_payload(code, payload)
+        except Exception as error:
+            errors.append(str(error))
+    raise RuntimeError("无法从最近定期报告确认目标 ETF：" + "；".join(errors[-3:]))
+
+
 def fetch_holdings(code):
     errors = []
-    underlying = ETF_UNDERLYING.get(code)
+    try:
+        underlying = discover_underlying_etf(code)
+    except Exception as error:
+        underlying = None
+        errors.append(f"自动识别目标 ETF: {error}")
     if underlying:
         try:
-            underlying_code, underlying_name = underlying
+            underlying_code = underlying["underlyingFundCode"]
+            underlying_name = underlying["underlyingFundName"]
             payload = fetch_holdings_eastmoney_direct(underlying_code)
             payload.update({
                 "fundCode": code,
@@ -470,9 +610,6 @@ class TradingSystemHandler(SimpleHTTPRequestHandler):
         match = re.fullmatch(r"/api/funds/(\d{6})/holdings", parsed.path)
         if match:
             code = match.group(1)
-            if code not in FUND_CODES:
-                self.send_json(404, {"error": "该基金未配置"})
-                return
             force_refresh = parse_qs(parsed.query).get("refresh") == ["1"]
             try:
                 self.send_json(200, get_holdings(code, force_refresh))
