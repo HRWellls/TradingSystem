@@ -222,6 +222,45 @@
     .chart-tooltip[hidden] { display: none; }
     .history-source { margin-top: 7px; color: var(--muted); text-align: right; font-size: 9px; }
 
+    .backtest-panel { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+    .backtest-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 15px; }
+    .backtest-title { margin: 0; font-size: 13px; }
+    .backtest-period { margin-top: 4px; color: var(--muted); font-size: 10px; }
+    .backtest-badge { flex: 0 0 auto; padding: 5px 8px; border: 1px solid #b9d6c8; border-radius: 5px; background: var(--green-soft); color: var(--green); font-size: 10px; font-weight: 700; }
+    .backtest-body { display: grid; grid-template-columns: minmax(0, 1fr) 260px; align-items: stretch; gap: 24px; }
+    .backtest-chart-wrap { position: relative; min-height: 205px; }
+    .backtest-chart { width: 100%; height: auto; display: block; aspect-ratio: 720 / 250; overflow: visible; }
+    .backtest-strategy-line, .backtest-fixed-line { fill: none; stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
+    .backtest-strategy-line.multiple-1 { stroke: #176b4d; }
+    .backtest-strategy-line.multiple-2 { stroke: #2878a5; }
+    .backtest-strategy-line.multiple-3 { stroke: #8057a6; }
+    .backtest-strategy-line.multiple-4 { stroke: #c05a39; }
+    .backtest-strategy-line.multiple-5 { stroke: #b02a4a; }
+    .backtest-fixed-line { stroke: #8a6a3e; stroke-dasharray: 5 4; }
+    .backtest-legend { display: flex; flex-wrap: wrap; gap: 12px; margin: 5px 0 0 52px; color: var(--muted); font-size: 9px; }
+    .backtest-legend span { display: inline-flex; align-items: center; gap: 5px; }
+    .backtest-legend i { width: 16px; height: 2px; display: inline-block; }
+    .backtest-legend .multiple-1 i { background: #176b4d; }
+    .backtest-legend .multiple-2 i { background: #2878a5; }
+    .backtest-legend .multiple-3 i { background: #8057a6; }
+    .backtest-legend .multiple-4 i { background: #c05a39; }
+    .backtest-legend .multiple-5 i { background: #b02a4a; }
+    .backtest-legend .fixed i { height: 0; border-top: 2px dashed #8a6a3e; background: transparent; }
+    .backtest-stats { display: grid; grid-template-columns: repeat(2, 1fr); align-content: center; border-block: 1px solid var(--line); }
+    .backtest-stat { min-width: 0; padding: 10px 8px 10px 0; }
+    .backtest-stat:nth-child(even) { padding-left: 12px; border-left: 1px solid var(--line); }
+    .backtest-stat:nth-child(n + 3) { border-top: 1px solid var(--line); }
+    .backtest-stat span { display: block; color: var(--muted); font-size: 9px; }
+    .backtest-stat strong { display: block; margin-top: 4px; overflow-wrap: anywhere; font-family: Georgia, serif; font-size: 15px; }
+    .backtest-stat strong.positive { color: #b33a2b; }
+    .backtest-stat strong.negative { color: var(--green); }
+    .backtest-source { margin-top: 9px; color: var(--muted); text-align: right; font-size: 9px; line-height: 1.6; }
+    .backtest-empty { min-height: 116px; display: grid; place-items: center; }
+    .backtest-run { min-height: 36px; padding: 0 14px; border: 1px solid var(--green); border-radius: 6px; background: var(--green); color: white; cursor: pointer; font-size: 11px; font-weight: 700; }
+    .backtest-run:hover { background: #125a41; }
+    .backtest-run:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+    .backtest-loading { min-height: 116px; display: grid; place-items: center; color: var(--muted); font-size: 12px; }
+
     .holdings-panel { margin-top: 0; padding-top: 0; border-top: 0; }
     .holdings-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
     .holdings-title { margin: 0; font-size: 13px; }
@@ -317,6 +356,8 @@
       .range-control { width: 100%; grid-auto-columns: 1fr; }
       .range-button { padding-inline: 3px; }
       .history-body { grid-template-columns: 1fr; gap: 12px; }
+      .backtest-body { grid-template-columns: 1fr; gap: 16px; }
+      .backtest-chart-wrap { min-height: 180px; }
       .history-stats { grid-template-columns: repeat(2, 1fr); }
       .history-stat { padding: 11px 12px 11px 0; }
       .history-stat:nth-child(odd) { padding-left: 0; }
@@ -463,6 +504,9 @@
           saveState();
         });
       });
+      document.querySelectorAll('[data-backtest-run]').forEach(button => {
+        button.addEventListener('click', () => startBacktest(assets.find(asset => asset.id === button.dataset.backtestRun)));
+      });
       updateSummary();
       renderRetirement();
       loadAllHistories();
@@ -494,6 +538,7 @@
           <div><section class="holdings-panel" id="holdings-${asset.id}" aria-label="${asset.name}最新公开持仓"><div class="holdings-loading">等待加载最新公开持仓...</div></section></div>
         </div>
         <section class="history-panel" id="history-${asset.id}" aria-label="${asset.name}历史净值"><div class="history-loading">等待加载历史净值...</div></section>
+        <section class="backtest-panel" id="backtest-${asset.id}" aria-label="${asset.name}过去一年阶梯定投回测"><div class="backtest-empty"><button class="backtest-run" type="button" data-backtest-run="${asset.id}">开始过去一年回测</button></div></section>
       </article>`;
     }
 
@@ -634,6 +679,158 @@
         });
       });
       bindChartPointer(asset.id, points);
+    }
+
+    async function startBacktest(asset) {
+      const panel = document.querySelector(`#backtest-${asset.id}`);
+      panel.innerHTML = `<div class="backtest-loading" role="status">正在回放过去一年的定投交易...</div>`;
+      try {
+        const response = await fetch(`/api/funds/${asset.code}/backtest`, { method: 'POST' });
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          throw new Error('回测接口未返回 JSON。请重启本地服务后再试。');
+        }
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail || result.error || '回测服务暂时不可用');
+        renderBacktest(asset, result);
+      } catch (error) {
+        panel.innerHTML = `<div class="history-error"><span>${escapeHtml(error.message)}</span><button class="retry-button" type="button" data-backtest-retry>重新回测</button></div>`;
+        panel.querySelector('[data-backtest-retry]').addEventListener('click', () => startBacktest(asset));
+      }
+    }
+
+    function renderBacktest(asset, result) {
+      const panel = document.querySelector(`#backtest-${asset.id}`);
+      const metrics = result.metrics;
+      const currency = result.strategy.currency;
+      const returnClass = metrics.strategyReturn > 0 ? 'positive' : metrics.strategyReturn < 0 ? 'negative' : '';
+      const excessClass = metrics.excessReturn > 0 ? 'positive' : metrics.excessReturn < 0 ? 'negative' : '';
+      panel.innerHTML = `<div class="backtest-head">
+          <div><h3 class="backtest-title">过去一年阶梯定投回测</h3><div class="backtest-period">${result.period.start} 至 ${result.period.end} · ${result.period.navDays} 个净值日</div></div>
+          <span class="backtest-badge">最高 ${metrics.highestMultiple} 倍</span>
+        </div>
+        <div class="backtest-body">
+          ${buildBacktestChart(asset.id, result)}
+          <div class="backtest-stats">
+            <div class="backtest-stat"><span>累计投入</span><strong>${formatCurrency(metrics.strategyInvested, currency)}</strong></div>
+            <div class="backtest-stat"><span>期末市值</span><strong>${formatCurrency(metrics.strategyValue, currency)}</strong></div>
+            <div class="backtest-stat"><span>累计盈亏</span><strong class="${returnClass}">${formatSignedCurrency(metrics.strategyProfit, currency)}</strong></div>
+            <div class="backtest-stat"><span>阶梯策略收益</span><strong class="${returnClass}">${formatPercent(metrics.strategyReturn)}</strong></div>
+            <div class="backtest-stat"><span>固定定投收益</span><strong>${formatPercent(metrics.fixedReturn)}</strong></div>
+            <div class="backtest-stat"><span>相对固定定投</span><strong class="${excessClass}">${formatPercent(metrics.excessReturn)}</strong></div>
+          </div>
+        </div>
+        <div class="backtest-source">后端回测 · ${formatCurrency(result.strategy.baseAmount, currency)}/净值日 · 相对区间滚动最高累计净值 · 上一净值日触发 · 每回撤 ${result.strategy.step}% 升一档 · 最高 ${result.strategy.maxMultiple} 倍 · 未计费用及额外补仓</div>`;
+      bindBacktestPointer(asset.id, result);
+    }
+
+    function buildBacktestChart(assetId, result) {
+      const width = 720;
+      const height = 250;
+      const left = 52;
+      const right = 706;
+      const top = 16;
+      const bottom = 216;
+      const values = result.series.flatMap(point => [point.strategyProfit, point.fixedProfit]);
+      const rawMinimum = Math.min(0, ...values);
+      const rawMaximum = Math.max(0, ...values);
+      const padding = Math.max((rawMaximum - rawMinimum) * .08, .25);
+      const minimum = rawMinimum - padding;
+      const maximum = rawMaximum + padding;
+      const x = index => left + index / Math.max(result.series.length - 1, 1) * (right - left);
+      const y = value => top + (maximum - value) / (maximum - minimum) * (bottom - top);
+      const fixedLine = result.series.map((point, index) => `${x(index).toFixed(2)},${y(point.fixedProfit).toFixed(2)}`).join(' ');
+      const strategySegments = buildBacktestSegments(result.series).map(segment => {
+        const points = segment.indices.map(index => `${x(index).toFixed(2)},${y(result.series[index].strategyProfit).toFixed(2)}`).join(' ');
+        return `<polyline class="backtest-strategy-line multiple-${segment.multiple}" data-backtest-multiple="${segment.multiple}" points="${points}"></polyline>`;
+      }).join('');
+      const activeMultiples = result.metrics.multipleDays
+        .map((days, multiple) => ({ days, multiple }))
+        .filter(item => item.multiple > 0 && item.days > 0);
+      const strategyLegend = activeMultiples.map(item => `<span class="multiple-${item.multiple}"><i></i>${item.multiple} 倍 · ${item.days} 日</span>`).join('');
+      const grid = [0, 1, 2, 3].map(index => {
+        const value = maximum - index / 3 * (maximum - minimum);
+        const vertical = y(value);
+        return `<line class="chart-grid" x1="${left}" y1="${vertical}" x2="${right}" y2="${vertical}"></line><text class="chart-axis-label" x="${left - 7}" y="${vertical + 3}" text-anchor="end">${formatCompactCurrency(value)}</text>`;
+      }).join('');
+      return `<div><div class="backtest-chart-wrap" data-backtest-wrap="${assetId}">
+          <svg class="backtest-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="阶梯定投与固定定投累计盈亏对比">
+            ${grid}
+            <polyline class="backtest-fixed-line" points="${fixedLine}"></polyline>
+            ${strategySegments}
+            <text class="chart-axis-label" x="${left}" y="239">${result.period.start}</text>
+            <text class="chart-axis-label" x="${right}" y="239" text-anchor="end">${result.period.end}</text>
+            <line class="chart-cursor" data-backtest-cursor x1="${left}" y1="${top}" x2="${left}" y2="${bottom}" hidden></line>
+            <circle class="chart-point" data-backtest-point cx="${left}" cy="${y(0)}" r="4" hidden></circle>
+            <rect class="chart-hit" data-backtest-hit x="${left}" y="${top}" width="${right - left}" height="${bottom - top}"></rect>
+          </svg>
+          <div class="chart-tooltip" data-backtest-tooltip hidden></div>
+        </div><div class="backtest-legend">${strategyLegend}<span class="fixed"><i></i>固定定投</span></div></div>`;
+    }
+
+    function buildBacktestSegments(series) {
+      if (!series.length) return [];
+      const segments = [];
+      let current = { multiple: series[0].multiple, indices: [0] };
+      for (let index = 1; index < series.length; index += 1) {
+        const multiple = series[index].multiple;
+        if (multiple !== current.multiple) {
+          segments.push(current);
+          current = { multiple, indices: [index - 1, index] };
+        } else {
+          current.indices.push(index);
+        }
+      }
+      segments.push(current);
+      return segments;
+    }
+
+    function bindBacktestPointer(assetId, result) {
+      const wrap = document.querySelector(`[data-backtest-wrap="${assetId}"]`);
+      const svg = wrap.querySelector('svg');
+      const hit = wrap.querySelector('[data-backtest-hit]');
+      const cursor = wrap.querySelector('[data-backtest-cursor]');
+      const marker = wrap.querySelector('[data-backtest-point]');
+      const tooltip = wrap.querySelector('[data-backtest-tooltip]');
+      const left = 52;
+      const right = 706;
+      const top = 16;
+      const bottom = 216;
+      const values = result.series.flatMap(point => [point.strategyProfit, point.fixedProfit]);
+      const rawMinimum = Math.min(0, ...values);
+      const rawMaximum = Math.max(0, ...values);
+      const padding = Math.max((rawMaximum - rawMinimum) * .08, .25);
+      const minimum = rawMinimum - padding;
+      const maximum = rawMaximum + padding;
+
+      function move(event) {
+        const rect = svg.getBoundingClientRect();
+        const viewX = (event.clientX - rect.left) / rect.width * 720;
+        const ratio = Math.max(0, Math.min(1, (viewX - left) / (right - left)));
+        const index = Math.round(ratio * (result.series.length - 1));
+        const point = result.series[index];
+        const x = left + index / Math.max(result.series.length - 1, 1) * (right - left);
+        const y = top + (maximum - point.strategyProfit) / (maximum - minimum) * (bottom - top);
+        cursor.setAttribute('x1', x);
+        cursor.setAttribute('x2', x);
+        cursor.hidden = false;
+        marker.setAttribute('cx', x);
+        marker.setAttribute('cy', y);
+        marker.hidden = false;
+        tooltip.innerHTML = `${point.date}<br>阶梯盈亏 ${formatSignedCurrency(point.strategyProfit, result.strategy.currency)} · ${point.multiple} 倍<br>固定盈亏 ${formatSignedCurrency(point.fixedProfit, result.strategy.currency)}`;
+        tooltip.style.left = `${x / 720 * 100}%`;
+        tooltip.style.top = `${y / 250 * 100}%`;
+        tooltip.hidden = false;
+      }
+
+      function leave() {
+        cursor.hidden = true;
+        marker.hidden = true;
+        tooltip.hidden = true;
+      }
+
+      hit.addEventListener('pointermove', move);
+      hit.addEventListener('pointerleave', leave);
     }
 
     function filterHistoryPoints(points, range) {
@@ -790,6 +987,22 @@
 
     function formatPercent(value) {
       return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
+    }
+
+    function formatCurrency(value, currency = 'CNY') {
+      const unit = currency === 'USD' ? '美元' : '元';
+      return `${Math.round(value).toLocaleString('zh-CN')} ${unit}`;
+    }
+
+    function formatSignedCurrency(value, currency = 'CNY') {
+      const rounded = Math.round(value);
+      const unit = currency === 'USD' ? '美元' : '元';
+      return `${rounded > 0 ? '+' : ''}${rounded.toLocaleString('zh-CN')} ${unit}`;
+    }
+
+    function formatCompactCurrency(value) {
+      const rounded = Math.round(value);
+      return `${rounded > 0 ? '+' : ''}${rounded}`;
     }
 
     function escapeHtml(value) {

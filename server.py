@@ -34,6 +34,17 @@ FUND_CODES = {
     "008163",
     "022436",
 }
+BACKTEST_STRATEGIES = {
+    "003629": {"base_amount": 6.0, "currency": "USD", "step": 5.0, "max_multiple": 5},
+    "017641": {"base_amount": 30.0, "currency": "CNY", "step": 7.5, "max_multiple": 5},
+    "019547": {"base_amount": 20.0, "currency": "CNY", "step": 10.0, "max_multiple": 5},
+    "000369": {"base_amount": 10.0, "currency": "CNY", "step": 7.5, "max_multiple": 5},
+    "006308": {"base_amount": 10.0, "currency": "CNY", "step": 10.0, "max_multiple": 5},
+    "007280": {"base_amount": 20.0, "currency": "CNY", "step": 10.0, "max_multiple": 5},
+    "006282": {"base_amount": 20.0, "currency": "CNY", "step": 7.5, "max_multiple": 5},
+    "008163": {"base_amount": 10.0, "currency": "CNY", "step": 5.0, "max_multiple": 5},
+    "022436": {"base_amount": 20.0, "currency": "CNY", "step": 10.0, "max_multiple": 5},
+}
 
 
 def read_cache(code):
@@ -651,6 +662,122 @@ def get_history(code, force_refresh=False):
         raise
 
 
+def one_year_earlier(value):
+    try:
+        return value.replace(year=value.year - 1)
+    except ValueError:
+        return value.replace(year=value.year - 1, day=28)
+
+
+def calculate_dca_backtest(code, history):
+    strategy = BACKTEST_STRATEGIES.get(code)
+    if strategy is None:
+        raise ValueError("该基金暂未配置回测程序")
+
+    valid_points = []
+    for point in history.get("points", []):
+        nav = number_or_none(point.get("nav"))
+        accumulated_nav = number_or_none(point.get("accumulatedNav"))
+        try:
+            point_date = datetime.strptime(point.get("date", ""), "%Y-%m-%d").date()
+        except (TypeError, ValueError):
+            continue
+        if nav is not None and nav > 0:
+            signal_nav = accumulated_nav if accumulated_nav is not None and accumulated_nav > 0 else nav
+            valid_points.append({
+                "date": point_date,
+                "dateText": point_date.isoformat(),
+                "nav": nav,
+                "signalNav": signal_nav,
+            })
+
+    if len(valid_points) < 2:
+        raise ValueError("没有足够的历史净值用于回测")
+    valid_points.sort(key=lambda point: point["date"])
+    cutoff = one_year_earlier(valid_points[-1]["date"])
+    points = [point for point in valid_points if point["date"] >= cutoff]
+    if len(points) < 2:
+        raise ValueError("过去一年没有足够的历史净值用于回测")
+
+    known_peak = points[0]["signalNav"]
+    known_drawdown = 0.0
+    strategy_shares = 0.0
+    strategy_invested = 0.0
+    fixed_shares = 0.0
+    fixed_invested = 0.0
+    highest_multiple = 1
+    multiple_days = [0] * (strategy["max_multiple"] + 1)
+    series = []
+
+    for point in points:
+        multiple = min(
+            strategy["max_multiple"],
+            1 + math.floor((max(0.0, -known_drawdown) + 1e-8) / strategy["step"]),
+        )
+        strategy_amount = strategy["base_amount"] * multiple
+        strategy_invested += strategy_amount
+        strategy_shares += strategy_amount / point["nav"]
+        fixed_invested += strategy["base_amount"]
+        fixed_shares += strategy["base_amount"] / point["nav"]
+        highest_multiple = max(highest_multiple, multiple)
+        multiple_days[multiple] += 1
+
+        strategy_value = strategy_shares * point["nav"]
+        fixed_value = fixed_shares * point["nav"]
+        series.append({
+            "date": point["dateText"],
+            "multiple": multiple,
+            "signalDrawdown": known_drawdown,
+            "strategyInvested": strategy_invested,
+            "strategyValue": strategy_value,
+            "strategyProfit": strategy_value - strategy_invested,
+            "strategyReturn": (strategy_value / strategy_invested - 1) * 100,
+            "fixedInvested": fixed_invested,
+            "fixedValue": fixed_value,
+            "fixedProfit": fixed_value - fixed_invested,
+            "fixedReturn": (fixed_value / fixed_invested - 1) * 100,
+        })
+
+        known_peak = max(known_peak, point["signalNav"])
+        known_drawdown = (point["signalNav"] / known_peak - 1) * 100
+
+    final = series[-1]
+    return {
+        "fundCode": code,
+        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "period": {
+            "start": points[0]["dateText"],
+            "end": points[-1]["dateText"],
+            "navDays": len(points),
+        },
+        "strategy": {
+            "baseAmount": strategy["base_amount"],
+            "currency": strategy["currency"],
+            "step": strategy["step"],
+            "maxMultiple": strategy["max_multiple"],
+            "signal": "previous-nav-day-drawdown",
+            "drawdownBasis": "rolling-period-high-accumulated-nav",
+            "feesIncluded": False,
+            "topupsIncluded": False,
+        },
+        "metrics": {
+            "strategyInvested": final["strategyInvested"],
+            "strategyValue": final["strategyValue"],
+            "strategyProfit": final["strategyProfit"],
+            "strategyReturn": final["strategyReturn"],
+            "fixedReturn": final["fixedReturn"],
+            "excessReturn": final["strategyReturn"] - final["fixedReturn"],
+            "highestMultiple": highest_multiple,
+            "multipleDays": multiple_days,
+        },
+        "series": series,
+    }
+
+
+def run_dca_backtest(code):
+    return calculate_dca_backtest(code, get_history(code))
+
+
 class TradingSystemHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT), **kwargs)
@@ -690,6 +817,25 @@ class TradingSystemHandler(SimpleHTTPRequestHandler):
         if parsed.path == "/":
             self.path = "/system.html"
         super().do_GET()
+
+    def do_POST(self):
+        parsed = urlparse(self.path)
+        match = re.fullmatch(r"/api/funds/(\d{6})/backtest", parsed.path)
+        if not match:
+            self.send_json(404, {"error": "接口不存在"})
+            return
+
+        content_length = int(self.headers.get("Content-Length", "0"))
+        if content_length:
+            self.rfile.read(content_length)
+        code = match.group(1)
+        if code not in BACKTEST_STRATEGIES:
+            self.send_json(404, {"error": "该基金暂未配置回测程序"})
+            return
+        try:
+            self.send_json(200, run_dca_backtest(code))
+        except Exception as error:
+            self.send_json(502, {"error": "策略回测失败", "detail": str(error)})
 
 
 def main():
