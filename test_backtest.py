@@ -71,10 +71,31 @@ class DcaBacktestTests(unittest.TestCase):
 
         self.assertEqual([point["multiple"] for point in result["series"]], [1, 1, 1])
 
+    def test_dividend_is_reinvested_before_the_days_purchase(self):
+        result = calculate_dca_backtest(
+            "019547",
+            history([(1.0, 1.0), (0.9, 1.0)]),
+        )
+
+        metrics = result["metrics"]
+        self.assertAlmostEqual(metrics["strategyDividendsReinvested"], 2.0)
+        self.assertAlmostEqual(metrics["strategyValue"], 40.0)
+        self.assertAlmostEqual(metrics["strategyProfit"], 0.0)
+        self.assertEqual(result["strategy"]["dividendMode"], "reinvested")
+
+    def test_dividend_before_the_backtest_period_is_not_reapplied(self):
+        points = [
+            {"date": "2025-08-09", "nav": 0.9, "accumulatedNav": 1.0},
+            {"date": "2025-08-10", "nav": 0.9, "accumulatedNav": 1.0},
+            {"date": "2026-08-10", "nav": 0.9, "accumulatedNav": 1.0},
+        ]
+        result = calculate_dca_backtest("019547", {"points": points}, "1y")
+        self.assertEqual(result["metrics"]["strategyDividendsReinvested"], 0.0)
+
     def test_unit_nav_is_still_used_as_purchase_price(self):
         result = calculate_dca_backtest(
             "019547",
-            history([(1.0, 1.0), (0.5, 1.0)]),
+            history([(1.0, 1.0), (0.5, 0.5)]),
         )
 
         self.assertEqual(result["metrics"]["strategyInvested"], 40.0)

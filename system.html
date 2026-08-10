@@ -743,7 +743,7 @@
             <div class="backtest-stat"><span>阶梯相对固定收益金额</span><strong class="${excessClass}">${formatSignedCurrency(excessProfit, currency)}</strong></div>
           </div>
         </div>
-        <div class="backtest-source">后端回测 · ${formatCurrency(result.strategy.baseAmount, currency)}/净值日 · 相对区间滚动最高累计净值 · 上一净值日触发 · 每回撤 ${result.strategy.step}% 升一档 · 最高 ${result.strategy.maxMultiple} 倍 · 未计费用及额外补仓</div>`;
+        <div class="backtest-source">后端回测 · ${formatCurrency(result.strategy.baseAmount, currency)}/净值日 · 红利再投资 · 相对区间滚动最高累计净值 · 上一净值日触发 · 每回撤 ${result.strategy.step}% 升一档 · 最高 ${result.strategy.maxMultiple} 倍 · 未计费用及额外补仓</div>`;
       bindBacktestPointer(asset.id, result);
       bindBacktestButtons(asset);
     }

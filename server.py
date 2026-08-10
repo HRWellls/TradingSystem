@@ -697,6 +697,7 @@ def calculate_dca_backtest(code, history, period="1y"):
                 "dateText": point_date.isoformat(),
                 "nav": nav,
                 "signalNav": signal_nav,
+                "dividendGap": signal_nav - nav if accumulated_nav is not None else None,
             })
 
     if len(valid_points) < 2:
@@ -719,9 +720,29 @@ def calculate_dca_backtest(code, history, period="1y"):
     fixed_invested = 0.0
     highest_multiple = 1
     multiple_days = [0] * (strategy["max_multiple"] + 1)
+    known_dividend_gap = points[0]["dividendGap"]
+    strategy_dividends_reinvested = 0.0
+    fixed_dividends_reinvested = 0.0
     series = []
 
     for point in points:
+        dividend_per_share = 0.0
+        dividend_gap = point["dividendGap"]
+        if dividend_gap is not None and known_dividend_gap is None:
+            known_dividend_gap = dividend_gap
+        elif dividend_gap is not None:
+            gap_increase = dividend_gap - known_dividend_gap
+            if gap_increase > 0.0005:
+                dividend_per_share = gap_increase
+                known_dividend_gap = dividend_gap
+        if dividend_per_share:
+            strategy_dividend = strategy_shares * dividend_per_share
+            fixed_dividend = fixed_shares * dividend_per_share
+            strategy_shares += strategy_dividend / point["nav"]
+            fixed_shares += fixed_dividend / point["nav"]
+            strategy_dividends_reinvested += strategy_dividend
+            fixed_dividends_reinvested += fixed_dividend
+
         multiple = min(
             strategy["max_multiple"],
             1 + math.floor((max(0.0, -known_drawdown) + 1e-8) / strategy["step"]),
@@ -747,6 +768,7 @@ def calculate_dca_backtest(code, history, period="1y"):
             "fixedInvested": fixed_invested,
             "fixedValue": fixed_value,
             "fixedProfit": fixed_value - fixed_invested,
+            "dividendPerShare": dividend_per_share,
         })
 
         known_peak = max(known_peak, point["signalNav"])
@@ -770,6 +792,7 @@ def calculate_dca_backtest(code, history, period="1y"):
             "maxMultiple": strategy["max_multiple"],
             "signal": "previous-nav-day-drawdown",
             "drawdownBasis": "rolling-period-high-accumulated-nav",
+            "dividendMode": "reinvested",
             "feesIncluded": False,
             "topupsIncluded": False,
         },
@@ -780,6 +803,8 @@ def calculate_dca_backtest(code, history, period="1y"):
             "strategyReturn": final["strategyReturn"],
             "fixedProfit": final["fixedProfit"],
             "excessProfit": final["strategyProfit"] - final["fixedProfit"],
+            "strategyDividendsReinvested": strategy_dividends_reinvested,
+            "fixedDividendsReinvested": fixed_dividends_reinvested,
             "highestMultiple": highest_multiple,
             "multipleDays": multiple_days,
         },
