@@ -27,11 +27,14 @@ python3 -m venv .venv
 /api/funds/003629/history?refresh=1
 ```
 
-每支基金支持过去一年、过去三年和成立以来的阶梯定投回测，由对应卡片内的按钮发起。统一服务端接口为：
+每支基金标题旁提供统一的回测按钮。点击后会展开独立的回测周期菜单，支持一个月、三个月、六个月、一年、三年、五年、十年和成立以来；未达到对应历史长度的周期不会显示，回测周期选择不会改变走势图周期。统一服务端接口为：
 
 ```text
 POST /api/funds/{基金代码}/backtest
+POST /api/funds/{基金代码}/backtest?period=1m
 POST /api/funds/{基金代码}/backtest?period=3y
+POST /api/funds/{基金代码}/backtest?period=5y
+POST /api/funds/{基金代码}/backtest?period=10y
 POST /api/funds/{基金代码}/backtest?period=all
 ```
 

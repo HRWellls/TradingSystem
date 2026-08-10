@@ -14,23 +14,32 @@ def history(values):
 
 
 class DcaBacktestTests(unittest.TestCase):
-    def test_period_filters_one_year_three_years_and_all_history(self):
+    def test_period_filters_chart_ranges_and_all_history(self):
         points = [
+            {"date": "2015-08-10", "nav": 0.9},
             {"date": "2020-08-10", "nav": 1.0},
             {"date": "2023-08-09", "nav": 1.1},
             {"date": "2023-08-10", "nav": 1.2},
             {"date": "2025-08-09", "nav": 1.3},
             {"date": "2025-08-10", "nav": 1.4},
+            {"date": "2026-05-10", "nav": 1.45},
+            {"date": "2026-07-10", "nav": 1.48},
             {"date": "2026-08-10", "nav": 1.5},
         ]
 
+        one_month = calculate_dca_backtest("019547", {"points": points}, "1m")
         one_year = calculate_dca_backtest("019547", {"points": points}, "1y")
         three_years = calculate_dca_backtest("019547", {"points": points}, "3y")
+        five_years = calculate_dca_backtest("019547", {"points": points}, "5y")
+        ten_years = calculate_dca_backtest("019547", {"points": points}, "10y")
         all_history = calculate_dca_backtest("019547", {"points": points}, "all")
 
+        self.assertEqual(one_month["period"]["start"], "2026-07-10")
         self.assertEqual(one_year["period"]["start"], "2025-08-10")
         self.assertEqual(three_years["period"]["start"], "2023-08-10")
-        self.assertEqual(all_history["period"]["start"], "2020-08-10")
+        self.assertEqual(five_years["period"]["start"], "2023-08-09")
+        self.assertEqual(ten_years["period"]["start"], "2020-08-10")
+        self.assertEqual(all_history["period"]["start"], "2015-08-10")
         self.assertEqual(all_history["period"]["label"], "成立以来")
 
     def test_period_cutoff_handles_leap_day(self):
@@ -43,7 +52,7 @@ class DcaBacktestTests(unittest.TestCase):
 
     def test_rejects_unknown_period(self):
         with self.assertRaisesRegex(ValueError, "不支持的回测周期"):
-            calculate_dca_backtest("019547", history([(1.0,), (1.1,)]), "5y")
+            calculate_dca_backtest("019547", history([(1.0,), (1.1,)]), "2y")
 
     def test_drawdown_uses_rolling_period_high(self):
         result = calculate_dca_backtest(

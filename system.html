@@ -151,7 +151,18 @@
 
     .asset-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
     .asset-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 11px; }
+    .asset-title-actions { position: relative; display: inline-flex; align-items: center; flex-wrap: wrap; gap: 8px; }
     .asset-name { font-size: 20px; font-weight: 700; }
+    .asset-backtest-run { min-height: 30px; padding: 0 11px; border: 1px solid var(--green); border-radius: 5px; background: var(--surface); color: var(--green); cursor: pointer; font-size: 11px; font-weight: 700; }
+    .asset-backtest-run:hover { background: var(--green-soft); }
+    .asset-backtest-run:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+    .asset-backtest-run:disabled { border-color: var(--line); color: var(--muted); cursor: wait; }
+    .backtest-period-menu { position: absolute; z-index: 5; top: calc(100% + 6px); left: 0; width: 188px; padding: 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); box-shadow: var(--shadow); }
+    .backtest-period-menu[hidden] { display: none; }
+    .backtest-period-option { width: 100%; min-height: 34px; display: flex; align-items: center; justify-content: space-between; padding: 0 9px; border: 0; border-radius: 4px; background: transparent; color: var(--ink); cursor: pointer; font-size: 11px; text-align: left; }
+    .backtest-period-option:hover, .backtest-period-option:focus-visible { background: var(--green-soft); color: var(--green); outline: 0; }
+    .backtest-period-option.active { color: var(--green); font-weight: 700; }
+    .backtest-period-option.active::after { content: "✓"; }
     .weight { color: var(--green); font-size: 13px; font-weight: 700; }
     .asset-meta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; color: var(--muted); font-size: 13px; }
     .asset-meta b { color: var(--ink); font-weight: 550; }
@@ -223,8 +234,8 @@
     .history-source { margin-top: 7px; color: var(--muted); text-align: right; font-size: 9px; }
 
     .backtest-panel { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+    .backtest-panel:empty { display: none; }
     .backtest-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 15px; }
-    .backtest-head-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
     .backtest-title { margin: 0; font-size: 13px; }
     .backtest-period { margin-top: 4px; color: var(--muted); font-size: 10px; }
     .backtest-badge { flex: 0 0 auto; padding: 5px 8px; border: 1px solid #b9d6c8; border-radius: 5px; background: var(--green-soft); color: var(--green); font-size: 10px; font-weight: 700; }
@@ -256,13 +267,6 @@
     .backtest-stat strong.positive { color: #b33a2b; }
     .backtest-stat strong.negative { color: var(--green); }
     .backtest-source { margin-top: 9px; color: var(--muted); text-align: right; font-size: 9px; line-height: 1.6; }
-    .backtest-empty { min-height: 116px; display: grid; place-items: center; }
-    .backtest-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
-    .backtest-run { min-height: 36px; padding: 0 14px; border: 1px solid var(--green); border-radius: 6px; background: var(--green); color: white; cursor: pointer; font-size: 11px; font-weight: 700; }
-    .backtest-run:hover { background: #125a41; }
-    .backtest-run:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
-    .backtest-run.secondary { background: var(--surface); color: var(--green); }
-    .backtest-run.secondary:hover { background: var(--green-soft); }
     .backtest-loading { min-height: 116px; display: grid; place-items: center; color: var(--muted); font-size: 12px; }
 
     .holdings-panel { margin-top: 0; padding-top: 0; border-top: 0; }
@@ -469,9 +473,9 @@
       ['10y', '10年', 120],
       ['all', '成立来', null]
     ];
-    const backtestPeriods = [['1y', '过去一年'], ['3y', '过去三年'], ['all', '成立以来']];
     const historyState = new Map();
     const holdingsState = new Map();
+    const backtestState = new Map();
     let toastTimer;
 
     function loadState() {
@@ -519,7 +523,14 @@
         });
       });
       document.querySelectorAll('[data-backtest-run]').forEach(button => {
-        button.addEventListener('click', () => startBacktest(assets.find(asset => asset.id === button.dataset.backtestRun), button.dataset.backtestPeriod));
+        button.addEventListener('click', event => {
+          event.stopPropagation();
+          toggleBacktestMenu(button.dataset.backtestRun);
+        });
+      });
+      document.addEventListener('click', closeBacktestMenus);
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') closeBacktestMenus();
       });
       updateSummary();
       renderRetirement();
@@ -539,7 +550,7 @@
       return `<article class="asset">
         <div class="asset-header">
           <div>
-            <div class="asset-heading"><span class="asset-name">${asset.name}</span><span class="weight">${asset.weight}%</span></div>
+            <div class="asset-heading"><span class="asset-name">${asset.name}</span><span class="weight">${asset.weight}%</span><span class="asset-title-actions"><button class="asset-backtest-run" type="button" data-backtest-run="${asset.id}" aria-haspopup="menu" aria-expanded="false" aria-controls="backtest-menu-${asset.id}" disabled>回测</button><div class="backtest-period-menu" id="backtest-menu-${asset.id}" role="menu" aria-label="选择回测时间段" hidden></div></span></div>
             <div class="asset-meta"><span>基础 <b>${asset.daily}</b></span><span>年定投 <b>${asset.annual.toLocaleString('zh-CN')} 元</b></span><span>每回撤 <b>${asset.step}%</b> 加一倍</span></div>
           </div>
           <div class="current-daily"><span>当前每日定投</span><strong data-current-daily="${asset.id}">${formatDaily(asset)}</strong></div>
@@ -552,18 +563,8 @@
           <div><section class="holdings-panel" id="holdings-${asset.id}" aria-label="${asset.name}最新公开持仓"><div class="holdings-loading">等待加载最新公开持仓...</div></section></div>
         </div>
         <section class="history-panel" id="history-${asset.id}" aria-label="${asset.name}历史净值"><div class="history-loading">等待加载历史净值...</div></section>
-        <section class="backtest-panel" id="backtest-${asset.id}" aria-label="${asset.name}阶梯定投回测"><div class="backtest-empty"><div class="backtest-actions">${buildBacktestButtons(asset.id)}</div></div></section>
+        <section class="backtest-panel" id="backtest-${asset.id}" aria-label="${asset.name}阶梯定投回测"></section>
       </article>`;
-    }
-
-    function buildBacktestButtons(assetId, activePeriod = '') {
-      return backtestPeriods.map(([period, label]) => `<button class="backtest-run ${activePeriod === period ? '' : 'secondary'}" type="button" data-backtest-run="${assetId}" data-backtest-period="${period}">${activePeriod ? label : `开始${label}回测`}</button>`).join('');
-    }
-
-    function bindBacktestButtons(asset) {
-      document.querySelectorAll(`#backtest-${asset.id} [data-backtest-run]`).forEach(button => {
-        button.addEventListener('click', () => startBacktest(asset, button.dataset.backtestPeriod));
-      });
     }
 
     async function loadAllHistories() {
@@ -651,6 +652,8 @@
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.detail || payload.error || '数据服务暂时不可用');
         historyState.set(asset.id, { status: 'ready', range: previous?.range || '1y', data: payload });
+        document.querySelector(`[data-backtest-run="${asset.id}"]`).disabled = false;
+        renderBacktestMenu(asset);
         renderHistory(asset);
       } catch (error) {
         const message = friendlyHistoryError(error.message);
@@ -707,9 +710,48 @@
       bindChartPointer(asset.id, points);
     }
 
-    async function startBacktest(asset, period = '1y') {
+    function renderBacktestMenu(asset) {
+      const historyEntry = historyState.get(asset.id);
+      const menu = document.querySelector(`#backtest-menu-${asset.id}`);
+      const selectedPeriod = backtestState.get(asset.id)?.period;
+      const ranges = getAvailableHistoryRanges(historyEntry.data.points);
+      menu.innerHTML = ranges.map(([period, label]) => `<button class="backtest-period-option ${selectedPeriod === period ? 'active' : ''}" type="button" role="menuitem" data-backtest-period="${period}">${label}</button>`).join('');
+      menu.querySelectorAll('[data-backtest-period]').forEach(button => {
+        button.addEventListener('click', event => {
+          event.stopPropagation();
+          closeBacktestMenus();
+          startBacktest(asset, button.dataset.backtestPeriod);
+        });
+      });
+    }
+
+    function toggleBacktestMenu(assetId) {
+      const menu = document.querySelector(`#backtest-menu-${assetId}`);
+      const shouldOpen = menu.hidden;
+      closeBacktestMenus();
+      if (!shouldOpen) return;
+      menu.hidden = false;
+      const trigger = document.querySelector(`[data-backtest-run="${assetId}"]`);
+      trigger.setAttribute('aria-expanded', 'true');
+      menu.querySelector('.backtest-period-option')?.focus();
+    }
+
+    function closeBacktestMenus() {
+      document.querySelectorAll('.backtest-period-menu').forEach(menu => {
+        menu.hidden = true;
+      });
+      document.querySelectorAll('[data-backtest-run]').forEach(button => {
+        button.setAttribute('aria-expanded', 'false');
+      });
+    }
+
+    async function startBacktest(asset, period) {
       const panel = document.querySelector(`#backtest-${asset.id}`);
-      const periodLabel = backtestPeriods.find(([key]) => key === period)?.[1] || '所选周期';
+      const historyEntry = historyState.get(asset.id);
+      if (!historyEntry || historyEntry.status !== 'ready') return;
+      const periodLabel = historyRanges.find(([key]) => key === period)?.[1] || '所选周期';
+      backtestState.set(asset.id, { period, status: 'loading' });
+      renderBacktestMenu(asset);
       panel.innerHTML = `<div class="backtest-loading" role="status">正在回放${periodLabel}的定投交易...</div>`;
       try {
         const response = await fetch(`/api/funds/${asset.code}/backtest?period=${encodeURIComponent(period)}`, { method: 'POST' });
@@ -719,8 +761,10 @@
         }
         const result = await response.json();
         if (!response.ok) throw new Error(result.detail || result.error || '回测服务暂时不可用');
+        backtestState.set(asset.id, { period, status: 'ready' });
         renderBacktest(asset, result);
       } catch (error) {
+        backtestState.set(asset.id, { period, status: 'error' });
         panel.innerHTML = `<div class="history-error"><span>${escapeHtml(error.message)}</span><button class="retry-button" type="button" data-backtest-retry>重新回测</button></div>`;
         panel.querySelector('[data-backtest-retry]').addEventListener('click', () => startBacktest(asset, period));
       }
@@ -738,10 +782,10 @@
           : null);
       const currency = result.strategy.currency;
       const returnClass = metrics.strategyReturn > 0 ? 'positive' : metrics.strategyReturn < 0 ? 'negative' : '';
-      const excessClass = metrics.excessProfit > 0 ? 'positive' : metrics.excessProfit < 0 ? 'negative' : '';
+      const excessClass = excessProfit > 0 ? 'positive' : excessProfit < 0 ? 'negative' : '';
       panel.innerHTML = `<div class="backtest-head">
           <div><h3 class="backtest-title">${result.period.label}阶梯定投回测</h3><div class="backtest-period">${result.period.start} 至 ${result.period.end} · ${result.period.navDays} 个净值日</div></div>
-          <div class="backtest-head-actions"><div class="backtest-actions">${buildBacktestButtons(asset.id, result.period.key)}</div><span class="backtest-badge">最高 ${metrics.highestMultiple} 倍</span></div>
+          <span class="backtest-badge">最高 ${metrics.highestMultiple} 倍</span>
         </div>
         <div class="backtest-body">
           ${buildBacktestChart(asset.id, result)}
@@ -756,7 +800,6 @@
         </div>
         <div class="backtest-source">后端回测 · ${formatCurrency(result.strategy.baseAmount, currency)}/净值日 · 红利再投资 · 相对区间滚动最高累计净值 · 上一净值日触发 · 每回撤 ${result.strategy.step}% 升一档 · 最高 ${result.strategy.maxMultiple} 倍 · 未计费用及额外补仓</div>`;
       bindBacktestPointer(asset.id, result);
-      bindBacktestButtons(asset);
     }
 
     function buildBacktestChart(assetId, result) {

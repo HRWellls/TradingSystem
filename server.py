@@ -46,9 +46,14 @@ BACKTEST_STRATEGIES = {
     "022436": {"base_amount": 20.0, "currency": "CNY", "step": 10.0, "max_multiple": 5},
 }
 BACKTEST_PERIODS = {
-    "1y": {"years": 1, "label": "过去一年"},
-    "3y": {"years": 3, "label": "过去三年"},
-    "all": {"years": None, "label": "成立以来"},
+    "1m": {"months": 1, "label": "过去一个月"},
+    "3m": {"months": 3, "label": "过去三个月"},
+    "6m": {"months": 6, "label": "过去六个月"},
+    "1y": {"months": 12, "label": "过去一年"},
+    "3y": {"months": 36, "label": "过去三年"},
+    "5y": {"months": 60, "label": "过去五年"},
+    "10y": {"months": 120, "label": "过去十年"},
+    "all": {"months": None, "label": "成立以来"},
 }
 
 
@@ -667,11 +672,16 @@ def get_history(code, force_refresh=False):
         raise
 
 
-def years_earlier(value, years):
-    try:
-        return value.replace(year=value.year - years)
-    except ValueError:
-        return value.replace(year=value.year - years, day=28)
+def months_earlier(value, months):
+    month_index = value.year * 12 + value.month - 1 - months
+    year, zero_based_month = divmod(month_index, 12)
+    month = zero_based_month + 1
+    if month == 12:
+        next_month = value.replace(year=year + 1, month=1, day=1)
+    else:
+        next_month = value.replace(year=year, month=month + 1, day=1)
+    last_day = (next_month - timedelta(days=1)).day
+    return value.replace(year=year, month=month, day=min(value.day, last_day))
 
 
 def calculate_dca_backtest(code, history, period="1y"):
@@ -703,11 +713,11 @@ def calculate_dca_backtest(code, history, period="1y"):
     if len(valid_points) < 2:
         raise ValueError("没有足够的历史净值用于回测")
     valid_points.sort(key=lambda point: point["date"])
-    years = period_config["years"]
-    if years is None:
+    months = period_config["months"]
+    if months is None:
         points = valid_points
     else:
-        cutoff = years_earlier(valid_points[-1]["date"], years)
+        cutoff = months_earlier(valid_points[-1]["date"], months)
         points = [point for point in valid_points if point["date"] >= cutoff]
     if len(points) < 2:
         raise ValueError(f"{period_config['label']}没有足够的历史净值用于回测")
