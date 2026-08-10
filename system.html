@@ -459,7 +459,16 @@
     const regions = [...new Set(assets.map(asset => asset.region))];
     const app = document.querySelector('#app');
     const toast = document.querySelector('#toast');
-    const historyRanges = [['1m', '1月'], ['3m', '3月'], ['6m', '6月'], ['1y', '1年'], ['3y', '3年'], ['all', '成立来']];
+    const historyRanges = [
+      ['1m', '1月', 1],
+      ['3m', '3月', 3],
+      ['6m', '6月', 6],
+      ['1y', '1年', 12],
+      ['3y', '3年', 36],
+      ['5y', '5年', 60],
+      ['10y', '10年', 120],
+      ['all', '成立来', null]
+    ];
     const backtestPeriods = [['1y', '过去一年'], ['3y', '过去三年'], ['all', '成立以来']];
     const historyState = new Map();
     const holdingsState = new Map();
@@ -654,6 +663,8 @@
     function renderHistory(asset) {
       const entry = historyState.get(asset.id);
       const panel = document.querySelector(`#history-${asset.id}`);
+      const availableRanges = getAvailableHistoryRanges(entry.data.points);
+      if (!availableRanges.some(([value]) => value === entry.range)) entry.range = 'all';
       const points = filterHistoryPoints(entry.data.points, entry.range);
       if (points.length < 2) {
         panel.innerHTML = `<div class="history-error">该时间范围内没有足够的净值数据</div>`;
@@ -669,7 +680,7 @@
       const highIndex = values.indexOf(Math.max(...values));
       const drawdown = calculateMaxDrawdown(points);
       const returnClass = returnRate > 0 ? 'positive' : returnRate < 0 ? 'negative' : '';
-      const ranges = historyRanges.map(([value, label]) => `<button type="button" class="range-button ${entry.range === value ? 'active' : ''}" data-history-range="${value}" aria-pressed="${entry.range === value}">${label}</button>`).join('');
+      const ranges = availableRanges.map(([value, label]) => `<button type="button" class="range-button ${entry.range === value ? 'active' : ''}" data-history-range="${value}" aria-pressed="${entry.range === value}">${label}</button>`).join('');
 
       panel.innerHTML = `<div class="history-head">
           <div class="history-title-row"><h3 class="history-title">历史净值走势</h3><div class="range-control" aria-label="走势图时间范围">${ranges}</div></div>
@@ -859,10 +870,26 @@
 
     function filterHistoryPoints(points, range) {
       if (range === 'all' || !points.length) return points;
-      const monthsByRange = { '1m': 1, '3m': 3, '6m': 6, '1y': 12, '3y': 36 };
-      const cutoff = new Date(`${points[points.length - 1].date}T00:00:00`);
-      cutoff.setMonth(cutoff.getMonth() - monthsByRange[range]);
-      return points.filter(point => new Date(`${point.date}T00:00:00`) >= cutoff);
+      const rangeConfig = historyRanges.find(([value]) => value === range);
+      if (!rangeConfig || rangeConfig[2] === null) return points;
+      const cutoff = subtractCalendarMonths(points[points.length - 1].date, rangeConfig[2]);
+      return points.filter(point => point.date >= cutoff);
+    }
+
+    function getAvailableHistoryRanges(points) {
+      if (!points.length) return historyRanges.filter(([value]) => value === 'all');
+      const firstDate = points[0].date;
+      const lastDate = points[points.length - 1].date;
+      return historyRanges.filter(([, , months]) => months === null || firstDate <= subtractCalendarMonths(lastDate, months));
+    }
+
+    function subtractCalendarMonths(dateText, months) {
+      const [year, month, day] = dateText.split('-').map(Number);
+      const targetMonthIndex = year * 12 + month - 1 - months;
+      const targetYear = Math.floor(targetMonthIndex / 12);
+      const targetMonth = targetMonthIndex - targetYear * 12;
+      const lastDay = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate();
+      return `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(Math.min(day, lastDay)).padStart(2, '0')}`;
     }
 
     function chartValue(point) {
