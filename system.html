@@ -224,6 +224,7 @@
 
     .backtest-panel { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
     .backtest-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 15px; }
+    .backtest-head-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
     .backtest-title { margin: 0; font-size: 13px; }
     .backtest-period { margin-top: 4px; color: var(--muted); font-size: 10px; }
     .backtest-badge { flex: 0 0 auto; padding: 5px 8px; border: 1px solid #b9d6c8; border-radius: 5px; background: var(--green-soft); color: var(--green); font-size: 10px; font-weight: 700; }
@@ -256,9 +257,12 @@
     .backtest-stat strong.negative { color: var(--green); }
     .backtest-source { margin-top: 9px; color: var(--muted); text-align: right; font-size: 9px; line-height: 1.6; }
     .backtest-empty { min-height: 116px; display: grid; place-items: center; }
+    .backtest-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
     .backtest-run { min-height: 36px; padding: 0 14px; border: 1px solid var(--green); border-radius: 6px; background: var(--green); color: white; cursor: pointer; font-size: 11px; font-weight: 700; }
     .backtest-run:hover { background: #125a41; }
     .backtest-run:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+    .backtest-run.secondary { background: var(--surface); color: var(--green); }
+    .backtest-run.secondary:hover { background: var(--green-soft); }
     .backtest-loading { min-height: 116px; display: grid; place-items: center; color: var(--muted); font-size: 12px; }
 
     .holdings-panel { margin-top: 0; padding-top: 0; border-top: 0; }
@@ -456,6 +460,7 @@
     const app = document.querySelector('#app');
     const toast = document.querySelector('#toast');
     const historyRanges = [['1m', '1月'], ['3m', '3月'], ['6m', '6月'], ['1y', '1年'], ['3y', '3年'], ['all', '成立来']];
+    const backtestPeriods = [['1y', '过去一年'], ['3y', '过去三年'], ['all', '成立以来']];
     const historyState = new Map();
     const holdingsState = new Map();
     let toastTimer;
@@ -505,7 +510,7 @@
         });
       });
       document.querySelectorAll('[data-backtest-run]').forEach(button => {
-        button.addEventListener('click', () => startBacktest(assets.find(asset => asset.id === button.dataset.backtestRun)));
+        button.addEventListener('click', () => startBacktest(assets.find(asset => asset.id === button.dataset.backtestRun), button.dataset.backtestPeriod));
       });
       updateSummary();
       renderRetirement();
@@ -538,8 +543,18 @@
           <div><section class="holdings-panel" id="holdings-${asset.id}" aria-label="${asset.name}最新公开持仓"><div class="holdings-loading">等待加载最新公开持仓...</div></section></div>
         </div>
         <section class="history-panel" id="history-${asset.id}" aria-label="${asset.name}历史净值"><div class="history-loading">等待加载历史净值...</div></section>
-        <section class="backtest-panel" id="backtest-${asset.id}" aria-label="${asset.name}过去一年阶梯定投回测"><div class="backtest-empty"><button class="backtest-run" type="button" data-backtest-run="${asset.id}">开始过去一年回测</button></div></section>
+        <section class="backtest-panel" id="backtest-${asset.id}" aria-label="${asset.name}阶梯定投回测"><div class="backtest-empty"><div class="backtest-actions">${buildBacktestButtons(asset.id)}</div></div></section>
       </article>`;
+    }
+
+    function buildBacktestButtons(assetId, activePeriod = '') {
+      return backtestPeriods.map(([period, label]) => `<button class="backtest-run ${activePeriod === period ? '' : 'secondary'}" type="button" data-backtest-run="${assetId}" data-backtest-period="${period}">${activePeriod ? label : `开始${label}回测`}</button>`).join('');
+    }
+
+    function bindBacktestButtons(asset) {
+      document.querySelectorAll(`#backtest-${asset.id} [data-backtest-run]`).forEach(button => {
+        button.addEventListener('click', () => startBacktest(asset, button.dataset.backtestPeriod));
+      });
     }
 
     async function loadAllHistories() {
@@ -681,11 +696,12 @@
       bindChartPointer(asset.id, points);
     }
 
-    async function startBacktest(asset) {
+    async function startBacktest(asset, period = '1y') {
       const panel = document.querySelector(`#backtest-${asset.id}`);
-      panel.innerHTML = `<div class="backtest-loading" role="status">正在回放过去一年的定投交易...</div>`;
+      const periodLabel = backtestPeriods.find(([key]) => key === period)?.[1] || '所选周期';
+      panel.innerHTML = `<div class="backtest-loading" role="status">正在回放${periodLabel}的定投交易...</div>`;
       try {
-        const response = await fetch(`/api/funds/${asset.code}/backtest`, { method: 'POST' });
+        const response = await fetch(`/api/funds/${asset.code}/backtest?period=${encodeURIComponent(period)}`, { method: 'POST' });
         const contentType = response.headers.get('content-type') || '';
         if (!contentType.includes('application/json')) {
           throw new Error('回测接口未返回 JSON。请重启本地服务后再试。');
@@ -695,19 +711,26 @@
         renderBacktest(asset, result);
       } catch (error) {
         panel.innerHTML = `<div class="history-error"><span>${escapeHtml(error.message)}</span><button class="retry-button" type="button" data-backtest-retry>重新回测</button></div>`;
-        panel.querySelector('[data-backtest-retry]').addEventListener('click', () => startBacktest(asset));
+        panel.querySelector('[data-backtest-retry]').addEventListener('click', () => startBacktest(asset, period));
       }
     }
 
     function renderBacktest(asset, result) {
       const panel = document.querySelector(`#backtest-${asset.id}`);
       const metrics = result.metrics;
+      const finalPoint = result.series?.[result.series.length - 1] || {};
+      const fixedProfit = Number.isFinite(metrics.fixedProfit) ? metrics.fixedProfit : finalPoint.fixedProfit;
+      const excessProfit = Number.isFinite(metrics.excessProfit)
+        ? metrics.excessProfit
+        : (Number.isFinite(finalPoint.strategyProfit) && Number.isFinite(finalPoint.fixedProfit)
+          ? finalPoint.strategyProfit - finalPoint.fixedProfit
+          : null);
       const currency = result.strategy.currency;
       const returnClass = metrics.strategyReturn > 0 ? 'positive' : metrics.strategyReturn < 0 ? 'negative' : '';
-      const excessClass = metrics.excessReturn > 0 ? 'positive' : metrics.excessReturn < 0 ? 'negative' : '';
+      const excessClass = metrics.excessProfit > 0 ? 'positive' : metrics.excessProfit < 0 ? 'negative' : '';
       panel.innerHTML = `<div class="backtest-head">
-          <div><h3 class="backtest-title">过去一年阶梯定投回测</h3><div class="backtest-period">${result.period.start} 至 ${result.period.end} · ${result.period.navDays} 个净值日</div></div>
-          <span class="backtest-badge">最高 ${metrics.highestMultiple} 倍</span>
+          <div><h3 class="backtest-title">${result.period.label}阶梯定投回测</h3><div class="backtest-period">${result.period.start} 至 ${result.period.end} · ${result.period.navDays} 个净值日</div></div>
+          <div class="backtest-head-actions"><div class="backtest-actions">${buildBacktestButtons(asset.id, result.period.key)}</div><span class="backtest-badge">最高 ${metrics.highestMultiple} 倍</span></div>
         </div>
         <div class="backtest-body">
           ${buildBacktestChart(asset.id, result)}
@@ -716,12 +739,13 @@
             <div class="backtest-stat"><span>期末市值</span><strong>${formatCurrency(metrics.strategyValue, currency)}</strong></div>
             <div class="backtest-stat"><span>累计盈亏</span><strong class="${returnClass}">${formatSignedCurrency(metrics.strategyProfit, currency)}</strong></div>
             <div class="backtest-stat"><span>阶梯策略收益</span><strong class="${returnClass}">${formatPercent(metrics.strategyReturn)}</strong></div>
-            <div class="backtest-stat"><span>固定定投收益</span><strong>${formatPercent(metrics.fixedReturn)}</strong></div>
-            <div class="backtest-stat"><span>相对固定定投</span><strong class="${excessClass}">${formatPercent(metrics.excessReturn)}</strong></div>
+            <div class="backtest-stat"><span>固定定投收益金额</span><strong class="${returnClass}">${formatSignedCurrency(fixedProfit, currency)}</strong></div>
+            <div class="backtest-stat"><span>阶梯相对固定收益金额</span><strong class="${excessClass}">${formatSignedCurrency(excessProfit, currency)}</strong></div>
           </div>
         </div>
         <div class="backtest-source">后端回测 · ${formatCurrency(result.strategy.baseAmount, currency)}/净值日 · 相对区间滚动最高累计净值 · 上一净值日触发 · 每回撤 ${result.strategy.step}% 升一档 · 最高 ${result.strategy.maxMultiple} 倍 · 未计费用及额外补仓</div>`;
       bindBacktestPointer(asset.id, result);
+      bindBacktestButtons(asset);
     }
 
     function buildBacktestChart(assetId, result) {
@@ -990,11 +1014,13 @@
     }
 
     function formatCurrency(value, currency = 'CNY') {
+      if (!Number.isFinite(value)) return '--';
       const unit = currency === 'USD' ? '美元' : '元';
       return `${Math.round(value).toLocaleString('zh-CN')} ${unit}`;
     }
 
     function formatSignedCurrency(value, currency = 'CNY') {
+      if (!Number.isFinite(value)) return '--';
       const rounded = Math.round(value);
       const unit = currency === 'USD' ? '美元' : '元';
       return `${rounded > 0 ? '+' : ''}${rounded.toLocaleString('zh-CN')} ${unit}`;

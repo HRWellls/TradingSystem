@@ -45,6 +45,11 @@ BACKTEST_STRATEGIES = {
     "008163": {"base_amount": 10.0, "currency": "CNY", "step": 5.0, "max_multiple": 5},
     "022436": {"base_amount": 20.0, "currency": "CNY", "step": 10.0, "max_multiple": 5},
 }
+BACKTEST_PERIODS = {
+    "1y": {"years": 1, "label": "过去一年"},
+    "3y": {"years": 3, "label": "过去三年"},
+    "all": {"years": None, "label": "成立以来"},
+}
 
 
 def read_cache(code):
@@ -662,17 +667,20 @@ def get_history(code, force_refresh=False):
         raise
 
 
-def one_year_earlier(value):
+def years_earlier(value, years):
     try:
-        return value.replace(year=value.year - 1)
+        return value.replace(year=value.year - years)
     except ValueError:
-        return value.replace(year=value.year - 1, day=28)
+        return value.replace(year=value.year - years, day=28)
 
 
-def calculate_dca_backtest(code, history):
+def calculate_dca_backtest(code, history, period="1y"):
     strategy = BACKTEST_STRATEGIES.get(code)
     if strategy is None:
         raise ValueError("该基金暂未配置回测程序")
+    period_config = BACKTEST_PERIODS.get(period)
+    if period_config is None:
+        raise ValueError("不支持的回测周期")
 
     valid_points = []
     for point in history.get("points", []):
@@ -694,10 +702,14 @@ def calculate_dca_backtest(code, history):
     if len(valid_points) < 2:
         raise ValueError("没有足够的历史净值用于回测")
     valid_points.sort(key=lambda point: point["date"])
-    cutoff = one_year_earlier(valid_points[-1]["date"])
-    points = [point for point in valid_points if point["date"] >= cutoff]
+    years = period_config["years"]
+    if years is None:
+        points = valid_points
+    else:
+        cutoff = years_earlier(valid_points[-1]["date"], years)
+        points = [point for point in valid_points if point["date"] >= cutoff]
     if len(points) < 2:
-        raise ValueError("过去一年没有足够的历史净值用于回测")
+        raise ValueError(f"{period_config['label']}没有足够的历史净值用于回测")
 
     known_peak = points[0]["signalNav"]
     known_drawdown = 0.0
@@ -735,7 +747,6 @@ def calculate_dca_backtest(code, history):
             "fixedInvested": fixed_invested,
             "fixedValue": fixed_value,
             "fixedProfit": fixed_value - fixed_invested,
-            "fixedReturn": (fixed_value / fixed_invested - 1) * 100,
         })
 
         known_peak = max(known_peak, point["signalNav"])
@@ -746,6 +757,8 @@ def calculate_dca_backtest(code, history):
         "fundCode": code,
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "period": {
+            "key": period,
+            "label": period_config["label"],
             "start": points[0]["dateText"],
             "end": points[-1]["dateText"],
             "navDays": len(points),
@@ -765,8 +778,8 @@ def calculate_dca_backtest(code, history):
             "strategyValue": final["strategyValue"],
             "strategyProfit": final["strategyProfit"],
             "strategyReturn": final["strategyReturn"],
-            "fixedReturn": final["fixedReturn"],
-            "excessReturn": final["strategyReturn"] - final["fixedReturn"],
+            "fixedProfit": final["fixedProfit"],
+            "excessProfit": final["strategyProfit"] - final["fixedProfit"],
             "highestMultiple": highest_multiple,
             "multipleDays": multiple_days,
         },
@@ -774,8 +787,8 @@ def calculate_dca_backtest(code, history):
     }
 
 
-def run_dca_backtest(code):
-    return calculate_dca_backtest(code, get_history(code))
+def run_dca_backtest(code, period="1y"):
+    return calculate_dca_backtest(code, get_history(code), period)
 
 
 class TradingSystemHandler(SimpleHTTPRequestHandler):
@@ -832,8 +845,12 @@ class TradingSystemHandler(SimpleHTTPRequestHandler):
         if code not in BACKTEST_STRATEGIES:
             self.send_json(404, {"error": "该基金暂未配置回测程序"})
             return
+        period = parse_qs(parsed.query).get("period", ["1y"])[0]
+        if period not in BACKTEST_PERIODS:
+            self.send_json(400, {"error": "不支持的回测周期"})
+            return
         try:
-            self.send_json(200, run_dca_backtest(code))
+            self.send_json(200, run_dca_backtest(code, period))
         except Exception as error:
             self.send_json(502, {"error": "策略回测失败", "detail": str(error)})
 

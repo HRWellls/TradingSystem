@@ -27,10 +27,12 @@ python3 -m venv .venv
 /api/funds/003629/history?refresh=1
 ```
 
-每支基金的过去一年阶梯定投回测由对应卡片内的按钮发起，统一服务端接口为：
+每支基金支持过去一年、过去三年和成立以来的阶梯定投回测，由对应卡片内的按钮发起。统一服务端接口为：
 
 ```text
 POST /api/funds/{基金代码}/backtest
+POST /api/funds/{基金代码}/backtest?period=3y
+POST /api/funds/{基金代码}/backtest?period=all
 ```
 
 服务端按基金代码读取基础定投金额、币种和回撤步长。回撤以回测时段内不断更新的最高累计净值为基准，使用上一净值日回撤触发，最高 5 倍；实际买入份额仍按单位净值计算，不计额外补仓和费用。
