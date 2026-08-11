@@ -20,6 +20,8 @@ CACHE_TTL = timedelta(hours=6)
 HOLDINGS_CACHE_TTL = timedelta(days=1)
 DISCOVERY_CACHE_TTL = timedelta(days=30)
 DISCOVERY_CACHE_VERSION = 2
+SCORE_CACHE_DIR = ROOT / "data" / "stock-score"
+SCORE_CACHE_TTL = timedelta(hours=12)
 EASTMONEY_HOST = "fundf10.eastmoney.com"
 EASTMONEY_API_HOST = "api.fund.eastmoney.com"
 EASTMONEY_PDF_HOST = "pdf.dfcfw.com"
@@ -33,6 +35,14 @@ FUND_CODES = {
     "006308",
     "008163",
     "022436",
+}
+RETIREMENT_STOCKS = {
+    "600900": {"name": "长江电力", "targetYield": 5.0},
+    "600377": {"name": "宁沪高速", "targetYield": 5.0},
+    "600036": {"name": "招商银行", "targetYield": 7.0},
+    "600795": {"name": "国电电力", "targetYield": 7.0},
+    "600887": {"name": "伊利股份", "targetYield": 7.0},
+    "601919": {"name": "中远海控", "targetYield": 9.0},
 }
 BACKTEST_STRATEGIES = {
     "003629": {"base_amount": 6.0, "currency": "USD", "step": 5.0, "max_multiple": 5},
@@ -79,6 +89,31 @@ def read_discovery_cache(code):
         return json.loads(path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError, OSError):
         return None
+
+
+def read_score_cache(code):
+    path = SCORE_CACHE_DIR / f"{code}.json"
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+
+
+def save_score_payload(code, payload):
+    SCORE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    path = SCORE_CACHE_DIR / f"{code}.json"
+    temporary = path.with_suffix(".tmp")
+    temporary.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    temporary.replace(path)
+    return payload
+
+
+def score_cache_is_fresh(payload):
+    try:
+        fetched_at = datetime.fromisoformat(payload["fetchedAt"])
+        return datetime.now(timezone.utc) - fetched_at < SCORE_CACHE_TTL
+    except (KeyError, TypeError, ValueError):
+        return False
 
 
 def cache_is_fresh(payload):
@@ -826,6 +861,249 @@ def run_dca_backtest(code, period="1y"):
     return calculate_dca_backtest(code, get_history(code), period)
 
 
+def _score_number(value):
+    return number_or_none(value)
+
+
+def _score_date(value):
+    text = str(value)[:10]
+    try:
+        return datetime.strptime(text, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
+def _score_rows(frame, date_column="REPORT_DATE"):
+    if frame is None or frame.empty or date_column not in frame.columns:
+        return []
+    rows = []
+    for _, row in frame.iterrows():
+        date = _score_date(row.get(date_column))
+        if date and date.month == 12 and date.day == 31:
+            rows.append((date.year, row))
+    rows.sort(key=lambda item: item[0], reverse=True)
+    return rows
+
+
+def _score_item(key, label, maximum, score, metrics, formula, status="ok"):
+    return {"key": key, "label": label, "max": maximum, "score": score, "metrics": metrics, "formula": formula, "status": status}
+
+
+def _sina_stock_history(ak, code, start_date, end_date):
+    """Fetch unadjusted A-share history from Sina when Eastmoney is unavailable."""
+    exchange_code = ("sh" if code.startswith(("5", "6", "9")) else "sz") + code
+    return ak.stock_zh_a_daily(symbol=exchange_code, start_date=start_date, end_date=end_date, adjust="")
+
+
+def calculate_stock_score(code):
+    if code not in RETIREMENT_STOCKS:
+        raise ValueError("该标的不在养老高股息列表中")
+    import akshare as ak
+    config = RETIREMENT_STOCKS[code]
+    warnings = []
+    sources = []
+    today = datetime.now(timezone.utc).date()
+    price = None
+    dividends = []
+    indicator_rows = []
+    cash_rows = []
+    balance_rows = []
+    valuation = {}
+    price_points = []
+
+    end = today.strftime("%Y%m%d")
+    # Current price and historical percentile are separate concerns. A long
+    # Eastmoney request can be rejected even when a short quote request works.
+    try:
+        recent_start = (today - timedelta(days=45)).strftime("%Y%m%d")
+        recent_history = ak.stock_zh_a_hist(symbol=code, period="daily", start_date=recent_start, end_date=end, adjust="")
+        if not recent_history.empty:
+            price = _score_number(recent_history.iloc[-1].get("收盘"))
+        sources.append("ak.stock_zh_a_hist (recent)")
+    except Exception as error:
+        recent_error = error
+    if price is None:
+        try:
+            recent_history = _sina_stock_history(ak, code, (today - timedelta(days=45)).strftime("%Y%m%d"), end)
+            if not recent_history.empty:
+                price = _score_number(recent_history.iloc[-1].get("close"))
+            if price is not None:
+                sources.append("ak.stock_zh_a_daily (Sina fallback)")
+        except Exception as error:
+            warnings.append(f"新浪当前行情回退失败: {error}")
+            if "recent_error" in locals():
+                warnings.append(f"当前行情获取失败: {recent_error}")
+    try:
+        long_start = (today - timedelta(days=365 * 6)).strftime("%Y%m%d")
+        long_history = ak.stock_zh_a_hist(symbol=code, period="daily", start_date=long_start, end_date=end, adjust="")
+        for _, row in long_history.iterrows():
+            date = _score_date(row.get("日期"))
+            close = _score_number(row.get("收盘"))
+            if date and close and close > 0:
+                price_points.append((date, close))
+        sources.append("ak.stock_zh_a_hist (history)")
+    except Exception as error:
+        history_error = error
+    if not price_points:
+        try:
+            long_history = _sina_stock_history(ak, code, (today - timedelta(days=365 * 6)).strftime("%Y%m%d"), end)
+            for _, row in long_history.iterrows():
+                date = _score_date(row.get("date"))
+                close = _score_number(row.get("close"))
+                if date and close and close > 0:
+                    price_points.append((date, close))
+            if price_points:
+                sources.append("ak.stock_zh_a_daily (Sina history fallback)")
+        except Exception as error:
+            warnings.append(f"新浪历史行情回退失败: {error}")
+            if "history_error" in locals():
+                warnings.append(f"历史行情获取失败，当前股价仍可用: {history_error}")
+
+    try:
+        frame = ak.stock_dividend_cninfo(symbol=code)
+        for _, row in frame.iterrows():
+            ex_date = _score_date(row.get("除权日"))
+            dividend = _score_number(row.get("派息比例"))
+            if ex_date and dividend is not None and ex_date <= today and dividend > 0:
+                dividends.append({"date": ex_date.isoformat(), "year": ex_date.year, "perShare": dividend / 10})
+        sources.append("ak.stock_dividend_cninfo")
+    except Exception as error:
+        warnings.append(f"历史分红获取失败: {error}")
+
+    try:
+        frame = ak.stock_financial_analysis_indicator_em(symbol=f"{code}.SH", indicator="按报告期")
+        indicator_rows = _score_rows(frame)
+        sources.append("ak.stock_financial_analysis_indicator_em")
+    except Exception as error:
+        warnings.append(f"财务指标获取失败: {error}")
+
+    try:
+        frame = ak.stock_cash_flow_sheet_by_yearly_em(symbol=f"SH{code}")
+        cash_rows = _score_rows(frame)
+        sources.append("ak.stock_cash_flow_sheet_by_yearly_em")
+    except Exception as error:
+        warnings.append(f"现金流量表获取失败: {error}")
+
+    try:
+        frame = ak.stock_balance_sheet_by_yearly_em(symbol=f"SH{code}")
+        balance_rows = _score_rows(frame)
+        sources.append("ak.stock_balance_sheet_by_yearly_em")
+    except Exception as error:
+        warnings.append(f"资产负债表获取失败: {error}")
+
+    try:
+        frame = ak.stock_zh_valuation_comparison_em(symbol=f"SH{code}")
+        if frame is not None and not frame.empty:
+            own = frame.iloc[0]
+            median = frame[frame["简称"].astype(str).str.contains("中值")].iloc[0] if (frame["简称"].astype(str).str.contains("中值")).any() else None
+            for field in ["市盈率-TTM", "市净率-MRQ", "EV/EBITDA-24A"]:
+                if field not in frame.columns:
+                    continue
+                value = _score_number(own.get(field))
+                peer = _score_number(median.get(field)) if median is not None else None
+                valuation[field] = {"value": value, "peerMedian": peer}
+        sources.append("ak.stock_zh_valuation_comparison_em")
+    except Exception as error:
+        warnings.append(f"同行估值获取失败: {error}")
+
+    dividends.sort(key=lambda item: item["date"])
+    ttm_dividend = sum(item["perShare"] for item in dividends if (today - datetime.strptime(item["date"], "%Y-%m-%d").date()).days <= 366)
+    annual_dividends = {}
+    for item in dividends:
+        annual_dividends[item["year"]] = annual_dividends.get(item["year"], 0) + item["perShare"]
+    latest_years = [year for year in sorted(annual_dividends, reverse=True) if annual_dividends[year] > 0]
+    current_yield = ttm_dividend / price * 100 if price and ttm_dividend else None
+    historical_yields = []
+    for index in range(0, len(price_points), 63):
+        point_date, point_price = price_points[index]
+        point_dividend = sum(item["perShare"] for item in dividends if 0 <= (point_date - datetime.strptime(item["date"], "%Y-%m-%d").date()).days <= 366)
+        if point_dividend > 0:
+            historical_yields.append(point_dividend / point_price * 100)
+    yield_percentile = None
+    if current_yield is not None and len(historical_yields) >= 20:
+        yield_percentile = sum(value <= current_yield for value in historical_yields) / len(historical_yields) * 100
+    latest_indicators = {year: row for year, row in indicator_rows}
+    latest_cash = {year: row for year, row in cash_rows}
+
+    def values(field, years=5):
+        return [(year, _score_number(latest_indicators[year].get(field))) for year in sorted(latest_indicators, reverse=True)[:years] if _score_number(latest_indicators[year].get(field)) is not None]
+
+    profits = values("PARENTNETPROFIT")
+    roe = values("ROEJQ", 3)
+    margins = values("XSMLL", 3)
+    cash_values = [(year, _score_number(row.get("NETCASH_OPERATE"))) for year, row in sorted(latest_cash.items(), reverse=True)[:5]]
+    cash_values = [(year, value) for year, value in cash_values if value is not None]
+    dividends_cash = [(year, _score_number(row.get("ASSIGN_DIVIDEND_PORFIT"))) for year, row in sorted(latest_cash.items(), reverse=True)[:3]]
+    dividends_cash = [(year, value) for year, value in dividends_cash if value is not None and value >= 0]
+
+    def cagr_score(series, high, mid, low):
+        if len(series) < 2 or series[0][1] <= 0 or series[-1][1] <= 0:
+            return 0, "数据不足或起止值非正"
+        years = max(1, series[0][0] - series[-1][0])
+        rate = ((series[0][1] / series[-1][1]) ** (1 / years) - 1) * 100
+        return (high if rate >= 8 else mid if rate >= 3 else low if rate >= 0 else 0), f"CAGR {rate:.2f}%"
+
+    a_score = (10 if current_yield is not None and current_yield >= 8 else 8 if current_yield is not None and current_yield >= 6 else 5 if current_yield is not None and current_yield >= 4 else 2 if current_yield is not None and current_yield >= 3 else 0) + (4 if latest_years else 0)
+    percentile_score = 6 if yield_percentile is not None and yield_percentile >= 70 else 4 if yield_percentile is not None and yield_percentile >= 50 else 2 if yield_percentile is not None and yield_percentile >= 30 else 0
+    a_score += percentile_score
+    b_growth, b_growth_note = cagr_score([(year, annual_dividends[year]) for year in latest_years[:5]], 5, 3, 1)
+    continuity = 5 if len(latest_years) >= 10 else 3 if len(latest_years) >= 5 else 0
+    b_score = continuity + b_growth + (5 if len(latest_years) >= 1 and all(annual_dividends.get(year, 0) >= annual_dividends.get(year - 1, 0) for year in latest_years[:10] if year - 1 in annual_dividends) else 0)
+    c_growth, c_growth_note = cagr_score(profits, 5, 3, 1)
+    positive_years = sum(1 for _, value in profits if value > 0)
+    c_score = c_growth + (5 if positive_years >= 5 else 3 if positive_years >= 4 else 1 if positive_years >= 2 else 0) + (3 if roe and sum(value for _, value in roe) / len(roe) >= 12 else 2 if roe and sum(value for _, value in roe) / len(roe) >= 8 else 1 if roe and sum(value for _, value in roe) / len(roe) >= 5 else 0) + (2 if len(margins) >= 2 and margins[0][1] >= margins[-1][1] - 3 else 0)
+    ratio = sum(value for _, value in cash_values) / sum(value for _, value in profits[:len(cash_values)]) if cash_values and profits and sum(value for _, value in profits[:len(cash_values)]) > 0 else None
+    d_score = 6 if ratio is not None and ratio >= 1 else 3 if ratio is not None and ratio >= .8 else 0
+    free_cash_flows = []
+    for year, row in sorted(latest_cash.items(), reverse=True)[:3]:
+        operating = _score_number(row.get("NETCASH_OPERATE"))
+        capital_spending = _score_number(row.get("CONSTRUCT_LONG_ASSET"))
+        if operating is not None and capital_spending is not None:
+            free_cash_flows.append((year, operating - capital_spending))
+    d_score += 5 if len(free_cash_flows) >= 3 and all(value > 0 for _, value in free_cash_flows) else 2 if len(free_cash_flows) >= 2 and sum(value > 0 for _, value in free_cash_flows) >= 2 else 0
+    payout = dividends_cash[0][1] / profits[0][1] * 100 if dividends_cash and profits and profits[0][1] > 0 else None
+    d_score += 5 if payout is not None and 30 <= payout <= 70 else 3 if payout is not None and 20 <= payout <= 90 else 0
+    coverage = cash_values[0][1] / dividends_cash[0][1] if cash_values and dividends_cash and dividends_cash[0][1] > 0 else None
+    d_score += 4 if coverage is not None and coverage >= 1.2 else 2 if coverage is not None and coverage >= 1 else 0
+    e_score = 0
+    debt_ratio = _score_number(latest_indicators.get(profits[0][0], {}).get("ZCFZL")) if profits else None
+    interest_coverage_values = values("INTEREST_COVERAGE_RATIO", 1)
+    interest_coverage = interest_coverage_values[0][1] if interest_coverage_values else None
+    e_score += 4 if interest_coverage is not None and interest_coverage >= 5 else 2 if interest_coverage is not None and interest_coverage >= 3 else 0
+    latest_balance = balance_rows[0][1] if balance_rows else {}
+    cash_balance = _score_number(latest_balance.get("MONETARYFUNDS"))
+    short_debt_parts = [_score_number(latest_balance.get(field)) for field in ("SHORT_LOAN", "NONCURRENT_LIAB_1YEAR")]
+    short_debt = sum(value for value in short_debt_parts if value is not None)
+    cash_short_debt = cash_balance / short_debt if cash_balance is not None and short_debt > 0 else None
+    e_score += 4 if cash_short_debt is not None and cash_short_debt >= 1 else 2 if cash_short_debt is not None and cash_short_debt >= .5 else 0
+    e_score += 3 if debt_ratio is not None and (not values("ZCFZL", 3) or values("ZCFZL", 3)[0][1] - values("ZCFZL", 3)[-1][1] <= 5) else 0
+    comparable = [item for item in valuation.values() if item["value"] is not None and item["peerMedian"] is not None and item["value"] > 0 and item["peerMedian"] > 0]
+    f_score = 6 if sum(item["value"] <= item["peerMedian"] for item in comparable) >= 2 else 3 if comparable and any(item["value"] <= item["peerMedian"] for item in comparable) else 0
+    f_score += 4 if current_yield is not None and current_yield >= config["targetYield"] else 0
+    audit_opinion = str(cash_rows[0][1].get("OPINION_TYPE", "")) if cash_rows else ""
+    g_score = 2 if "标准无保留" in audit_opinion else 0
+    dimensions = [
+        _score_item("A", "当前分红水平", 20, min(20, a_score), {"ttmYield": current_yield, "ttmDividendPerShare": ttm_dividend, "price": price, "yieldPercentile": yield_percentile, "historyPoints": len(historical_yields)}, "股息率分档 + 5 年历史分位 + 最近分红记录", "ok" if current_yield is not None else "insufficient_data"),
+        _score_item("B", "分红连续性与增长", 15, min(15, b_score), {"dividendYears": len(latest_years), "annualDividends": annual_dividends}, f"连续年数 + {b_growth_note}", "ok" if latest_years else "insufficient_data"),
+        _score_item("C", "盈利质量与稳定性", 15, min(15, c_score), {"profitYears": positive_years, "roe": roe, "margins": margins}, c_growth_note, "ok" if profits else "insufficient_data"),
+        _score_item("D", "现金流与分配覆盖", 20, min(20, d_score), {"cashFlowProfitRatio": ratio, "payoutRatio": payout, "cashDividendCoverage": coverage, "freeCashFlows": free_cash_flows}, "经营现金流、自由现金流、支付率和分红覆盖", "ok" if cash_values else "insufficient_data"),
+        _score_item("E", "资产负债表", 15, min(15, e_score), {"debtRatio": debt_ratio, "interestCoverage": interest_coverage, "cashShortDebt": cash_short_debt}, "利息覆盖、现金覆盖短债和负债率趋势", "ok" if debt_ratio is not None else "insufficient_data"),
+        _score_item("F", "估值与价格纪律", 10, min(10, f_score), {"valuation": valuation, "targetYield": config["targetYield"]}, "同行中值比较 + 目标股息率", "ok" if valuation else "insufficient_data"),
+        _score_item("G", "可验证披露与治理信号", 5, g_score, {"auditOpinion": audit_opinion}, "审计意见；质押和商誉字段缺失时不补分", "ok" if audit_opinion else "insufficient_data"),
+    ]
+    raw_score = sum(item["score"] for item in dimensions)
+    effective_max = sum(item["max"] for item in dimensions if item["status"] != "insufficient_data")
+    normalized = round(raw_score / effective_max * 100, 1) if effective_max else None
+    return save_score_payload(code, {"code": code, "name": config["name"], "targetYield": config["targetYield"], "price": price, "fetchedAt": datetime.now(timezone.utc).isoformat(), "dataAsOf": today.isoformat(), "rawScore": raw_score, "effectiveMax": effective_max, "normalizedScore": normalized, "dimensions": dimensions, "warnings": warnings, "sources": sources, "manualReview": ["特别分红是否应剔除", "重大诉讼、处罚和关联交易", "债务到期集中度", "行业周期与正常化盈利", "竞争优势、管理层和组合适配"]})
+
+
+def get_stock_score(code, force_refresh=False):
+    cached = read_score_cache(code)
+    if cached and not force_refresh and cached.get("price") is not None and score_cache_is_fresh(cached):
+        return cached
+    return calculate_stock_score(code)
+
+
 class TradingSystemHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT), **kwargs)
@@ -861,6 +1139,23 @@ class TradingSystemHandler(SimpleHTTPRequestHandler):
                 self.send_json(200, get_holdings(code, force_refresh))
             except Exception as error:
                 self.send_json(502, {"error": "基金持仓获取失败", "detail": str(error)})
+            return
+        match = re.fullmatch(r"/api/stocks/(\d{6})/score", parsed.path)
+        if match:
+            code = match.group(1)
+            if code not in RETIREMENT_STOCKS:
+                self.send_json(404, {"error": "该标的不在养老高股息列表中"})
+                return
+            force_refresh = parse_qs(parsed.query).get("refresh") == ["1"]
+            try:
+                self.send_json(200, get_stock_score(code, force_refresh))
+            except Exception as error:
+                cached = read_score_cache(code)
+                if cached:
+                    cached["warning"] = str(error)
+                    self.send_json(200, cached)
+                else:
+                    self.send_json(502, {"error": "评分数据获取失败", "detail": str(error)})
             return
         if parsed.path == "/":
             self.path = "/system.html"

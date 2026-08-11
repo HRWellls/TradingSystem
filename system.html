@@ -303,6 +303,10 @@
     .stock-table th { color: var(--muted); font-size: 11px; font-weight: 600; }
     .stock-table td:nth-child(2), .stock-table th:nth-child(2) { text-align: center; }
     .stock-table td:last-child, .stock-table th:last-child { text-align: right; }
+    .stock-link { display: inline-flex; align-items: center; gap: 7px; color: var(--ink); font-weight: 700; text-decoration: none; }
+    .stock-link:hover { color: var(--green); }
+    .stock-link::after { content: "→"; color: var(--green); font-size: 12px; }
+    .stock-code { display: block; margin-top: 3px; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9px; }
     .stock-status { display: inline-grid; grid-template-columns: repeat(3, 74px); gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: 6px; background: #f5f7f5; }
     .stock-choice { position: relative; }
     .stock-choice input { position: absolute; opacity: 0; pointer-events: none; }
@@ -450,12 +454,12 @@
     ];
 
     const retirementAssets = [
-      { id: 'yangtze-power', name: '长江电力', yield: 5 },
-      { id: 'jiangsu-expressway', name: '宁沪高速', yield: 5 },
-      { id: 'cmb', name: '招商银行', yield: 7 },
-      { id: 'gd-power', name: '国电电力', yield: 7 },
-      { id: 'yili', name: '伊利股份', yield: 7 },
-      { id: 'cosco', name: '中远海控', yield: 9 }
+      { id: 'yangtze-power', code: '600900', name: '长江电力', yield: 5 },
+      { id: 'jiangsu-expressway', code: '600377', name: '宁沪高速', yield: 5 },
+      { id: 'cmb', code: '600036', name: '招商银行', yield: 7 },
+      { id: 'gd-power', code: '600795', name: '国电电力', yield: 7 },
+      { id: 'yili', code: '600887', name: '伊利股份', yield: 7 },
+      { id: 'cosco', code: '601919', name: '中远海控', yield: 9 }
     ];
 
     const STORAGE_KEY = 'wangchangying-dca-status-v1';
@@ -1134,7 +1138,7 @@
       document.querySelector('#stockBody').innerHTML = retirementAssets.map(asset => {
         const statuses = [['waiting', '未达标'], ['opened', '已建仓'], ['doubled', '双倍建仓']];
         const choices = statuses.map(([value, label]) => `<span class="stock-choice"><input type="radio" id="stock-${asset.id}-${value}" name="stock-${asset.id}" data-stock="${asset.id}" value="${value}" ${retirementState[asset.id] === value ? 'checked' : ''}><label for="stock-${asset.id}-${value}">${label}</label></span>`).join('');
-        return `<tr><td>${asset.name}</td><td>${asset.yield}%</td><td><span class="stock-status" role="radiogroup" aria-label="${asset.name}当前状态">${choices}</span></td></tr>`;
+        return `<tr><td><a class="stock-link" href="/dividend-score.html?code=${asset.code}">${asset.name}</a><span class="stock-code">${asset.code}</span></td><td>${asset.yield}%</td><td><span class="stock-status" role="radiogroup" aria-label="${asset.name}当前状态">${choices}</span></td></tr>`;
       }).join('');
       document.querySelectorAll('input[data-stock]').forEach(input => {
         input.addEventListener('change', event => {

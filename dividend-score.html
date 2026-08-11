@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>养老高股息评分 · 望长盈</title>
+  <style>
+    :root { --ink:#18201d; --muted:#68716c; --line:#dfe4e1; --paper:#f7f8f6; --surface:#fff; --green:#176b4d; --green-soft:#e7f1ec; --amber:#a76516; --red:#a73e31; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-width:320px; background:var(--paper); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; letter-spacing:0; }
+    button { font:inherit; }
+    .topbar { border-bottom:1px solid var(--line); background:rgba(247,248,246,.94); }
+    .topbar-inner, main { width:min(1060px,calc(100% - 32px)); margin:0 auto; }
+    .topbar-inner { min-height:68px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .brand { display:flex; align-items:center; gap:12px; color:inherit; text-decoration:none; }
+    .mark { width:34px; height:34px; display:grid; place-items:center; border-radius:8px; background:var(--green); color:#fff; font-family:Georgia,serif; font-size:20px; }
+    .brand strong { display:block; font-size:16px; }
+    .brand span { display:block; margin-top:2px; color:var(--muted); font-size:11px; }
+    .top-actions { display:flex; gap:8px; }
+    .icon-button { min-width:38px; height:38px; display:grid; place-items:center; padding:0 10px; border:1px solid var(--line); border-radius:7px; background:var(--surface); color:var(--ink); cursor:pointer; font-size:12px; }
+    .icon-button:hover { border-color:#b7c1bc; background:#fbfcfb; }
+    main { padding:38px 0 64px; }
+    .eyebrow { color:var(--green); font-size:11px; font-weight:700; }
+    h1 { margin:6px 0 0; font-family:Georgia,"Songti SC",serif; font-size:34px; font-weight:600; }
+    .subtitle { margin:9px 0 0; color:var(--muted); font-size:13px; line-height:1.6; }
+    .overview { display:grid; grid-template-columns:1.1fr 1.9fr; gap:30px; margin:30px 0; padding:24px 0; border-block:1px solid var(--line); }
+    .score-number { color:var(--green); font-family:Georgia,serif; font-size:64px; line-height:.94; }
+    .score-number small { color:var(--muted); font-family:inherit; font-size:16px; }
+    .score-caption { margin-top:8px; color:var(--muted); font-size:12px; }
+    .metrics { display:grid; grid-template-columns:repeat(3,1fr); align-content:center; border-left:1px solid var(--line); }
+    .metric { min-width:0; padding:6px 18px; }
+    .metric + .metric { border-left:1px solid var(--line); }
+    .metric span { display:block; color:var(--muted); font-size:10px; }
+    .metric strong { display:block; margin-top:6px; overflow-wrap:anywhere; word-break:break-word; font-family:Georgia,serif; font-size:19px; }
+    .section { margin-top:34px; }
+    h2 { margin:0; font-size:17px; }
+    .section-lead { margin:7px 0 15px; color:var(--muted); font-size:12px; line-height:1.65; }
+    .dimension-list { border-top:1px solid var(--line); }
+    .dimension { display:grid; grid-template-columns:54px minmax(140px,1fr) minmax(200px,2.2fr) 84px; gap:16px; align-items:center; min-height:88px; border-bottom:1px solid var(--line); }
+    .dimension-key { color:var(--green); font-family:Georgia,serif; font-size:19px; }
+    .dimension-title { font-size:14px; font-weight:700; }
+    .dimension-formula { margin-top:5px; color:var(--muted); font-size:11px; line-height:1.5; }
+    .dimension-metrics { color:var(--muted); font-size:11px; line-height:1.55; }
+    .dimension-score { text-align:right; color:var(--green); font-family:Georgia,serif; font-size:24px; white-space:nowrap; }
+    .dimension-score small { color:var(--muted); font-family:inherit; font-size:11px; }
+    .missing { color:var(--amber); }
+    .info-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:28px; padding-top:16px; border-top:1px solid var(--line); }
+    .info-grid h3 { margin:0; font-size:13px; }
+    .plain-list { margin:10px 0 0; padding:0; list-style:none; }
+    .plain-list li { padding:9px 0; border-bottom:1px solid var(--line); color:var(--muted); font-size:12px; line-height:1.5; }
+    .notice { margin-top:32px; padding:14px 16px; border-left:3px solid var(--amber); background:#fffaf1; color:#72531e; font-size:12px; line-height:1.65; }
+    .loading, .error { min-height:320px; display:grid; place-items:center; color:var(--muted); font-size:13px; }
+    .error { color:var(--red); text-align:center; gap:12px; align-content:center; }
+    .error button { justify-self:center; }
+    @media (max-width:700px) { .topbar-inner, main { width:min(100% - 24px,1060px); } .brand { min-width:0; } .top-actions { flex:0 0 auto; } .top-actions button { display:none; } .top-actions a.icon-button { display:grid; text-decoration:none; } main { padding-top:28px; } h1 { font-size:28px; } .subtitle { overflow-wrap:anywhere; } .overview { grid-template-columns:1fr; gap:22px; } .metrics { width:100%; min-width:0; grid-template-columns:repeat(2,minmax(0,1fr)); border-left:0; border-top:1px solid var(--line); padding-top:16px; } .metric { min-width:0; padding:4px 10px; } .metric:first-child { padding-left:0; } .metric:nth-child(3) { grid-column:1 / -1; margin-top:12px; padding:12px 0 0; border-top:1px solid var(--line); border-left:0; } .metric strong { font-size:15px; overflow-wrap:anywhere; word-break:break-all; } .dimension { grid-template-columns:30px minmax(0,1fr) 62px; gap:8px; padding:14px 0; } .dimension-metrics { grid-column:2 / 4; min-width:0; overflow-wrap:anywhere; word-break:break-all; } .info-grid { grid-template-columns:1fr; gap:24px; } }
+  </style>
+</head>
+<body>
+  <header class="topbar"><div class="topbar-inner"><a class="brand" href="/system.html"><div class="mark">盈</div><div><strong>望长盈</strong><span>养老高股息评分</span></div></a><div class="top-actions"><button class="icon-button" id="refresh" type="button">刷新数据</button><a class="icon-button" href="/system.html">返回</a></div></div></header>
+  <main id="app"><div class="loading">正在读取公开财务与分红数据...</div></main>
+  <script>
+    const app = document.querySelector('#app');
+    const code = new URLSearchParams(location.search).get('code');
+    const percent = value => Number.isFinite(value) ? `${value.toFixed(2)}%` : '数据不足';
+    const yuan = value => Number.isFinite(value) ? value.toLocaleString('zh-CN', { maximumFractionDigits: 2 }) : '数据不足';
+    const escapeHtml = value => String(value).replace(/[&<>'"]/g, char => ({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' }[char]));
+    function metricText(item) {
+      const value = item.metrics || {};
+      if (item.key === 'A') return `股价 ${yuan(value.price)} 元 · TTM 每股分红 ${yuan(value.ttmDividendPerShare)} 元 · 股息率 ${percent(value.ttmYield)}`;
+      if (item.key === 'B') return `有分红记录 ${value.dividendYears ?? 0} 年 · 最近年度分红 ${Object.entries(value.annualDividends || {}).sort().slice(-1)[0]?.[1]?.toFixed(2) ?? '数据不足'} 元/股`;
+      if (item.key === 'C') return `近 5 年盈利为正 ${value.profitYears ?? 0} 年 · ROE 中位数 ${value.roe?.length ? percent([...value.roe].map(x => x[1]).sort((a,b) => a-b)[Math.floor(value.roe.length / 2)]) : '数据不足'}`;
+      if (item.key === 'D') return `经营现金流/净利润 ${value.cashFlowProfitRatio?.toFixed(2) ?? '数据不足'} · 支付率 ${percent(value.payoutRatio)} · 现金流覆盖 ${value.cashDividendCoverage?.toFixed(2) ?? '数据不足'} 倍`;
+      if (item.key === 'E') return `资产负债率 ${percent(value.debtRatio)}`;
+      if (item.key === 'F') return `目标股息率 ${value.targetYield}% · ${Object.entries(value.valuation || {}).map(([label, v]) => `${label} ${v.value?.toFixed(2) ?? '-'} / 同行 ${v.peerMedian?.toFixed(2) ?? '-'}`).join(' · ') || '同行估值数据不足'}`;
+      return `审计意见 ${value.auditOpinion || '数据不足'} · 质押和商誉需对应结构化字段完整返回后计算`;
+    }
+    function render(data) {
+      const score = data.normalizedScore === null ? '—' : data.normalizedScore.toFixed(1);
+      const dimensions = data.dimensions.map(item => `<article class="dimension"><div class="dimension-key">${item.key}</div><div><div class="dimension-title">${escapeHtml(item.label)}</div><div class="dimension-formula">${escapeHtml(item.formula)}</div></div><div class="dimension-metrics ${item.status === 'insufficient_data' ? 'missing' : ''}">${escapeHtml(metricText(item))}${item.status === 'insufficient_data' ? ' · 数据不足，不视为通过' : ''}</div><div class="dimension-score">${item.score}<small>/${item.max}</small></div></article>`).join('');
+      app.innerHTML = `<div class="eyebrow">${escapeHtml(data.code)} · 数据截止 ${escapeHtml(data.dataAsOf)}</div><h1>${escapeHtml(data.name)}</h1><p class="subtitle">评分基于已披露的免费公开数据自动计算。评分细则与缺失处理遵循《高股息养老股评分体系》；特别分红、行业周期和治理判断不会被伪装为客观分数。</p><section class="overview"><div><div class="score-number">${score}<small>/100</small></div><div class="score-caption">原始分 ${data.rawScore}/${data.effectiveMax || 100} · ${data.normalizedScore === null ? '无法归一化' : '按有效指标归一化'}</div></div><div class="metrics"><div class="metric"><span>当前价格</span><strong>${yuan(data.price)} 元</strong></div><div class="metric"><span>目标股息率</span><strong>${data.targetYield.toFixed(1)}%</strong></div><div class="metric"><span>抓取时间</span><strong>${new Date(data.fetchedAt).toLocaleString('zh-CN', { hour12:false })}</strong></div></div></section><section class="section"><h2>自动评分明细</h2><p class="section-lead">分数只基于已获取的结构化字段。标注“数据不足”的项不代表通过，需在后续接口补齐后再计算。</p><div class="dimension-list">${dimensions}</div></section><section class="section"><div class="info-grid"><div><h3>人工复核后才能买入</h3><ul class="plain-list">${data.manualReview.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div><div><h3>数据源与获取状态</h3><ul class="plain-list">${data.sources.map(item => `<li>${escapeHtml(item)}</li>`).join('')}${data.warnings.map(item => `<li class="missing">${escapeHtml(item)}</li>`).join('') || '<li>本次请求未报告接口错误</li>'}</ul></div></div></section><div class="notice">分数仅用于研究和执行纪律，不构成买入建议。出现自动否决信号、数据缺失或人工复核未完成时，不应仅依据总分建仓。</div>`;
+    }
+    async function load(forceRefresh = false) {
+      if (!/^\d{6}$/.test(code || '')) { app.innerHTML = '<div class="error">未指定有效证券代码。<a class="icon-button" href="/system.html">返回列表</a></div>'; return; }
+      app.innerHTML = '<div class="loading">正在读取公开财务与分红数据...</div>';
+      try { const response = await fetch(`/api/stocks/${code}/score${forceRefresh ? '?refresh=1' : ''}`); const data = await response.json(); if (!response.ok) throw new Error(data.error || '评分数据获取失败'); render(data); } catch (error) { app.innerHTML = `<div class="error"><span>${escapeHtml(error.message)}</span><button class="icon-button" type="button" id="retry">重新加载</button></div>`; document.querySelector('#retry').addEventListener('click', () => load(true)); }
+    }
+    document.querySelector('#refresh').addEventListener('click', () => load(true));
+    load();
+  </script>
+</body>
+</html>
