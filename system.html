@@ -151,6 +151,13 @@
 
     .asset-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
     .asset-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 11px; }
+    .asset-header-side { flex: 0 0 auto; display: flex; align-items: center; gap: 14px; }
+    .asset-view-actions { display: flex; align-items: center; gap: 6px; }
+    .asset-view-button { min-width: 52px; min-height: 32px; padding: 0 10px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--ink); cursor: pointer; font-size: 11px; font-weight: 700; }
+    .asset-view-button:hover { border-color: #b7c1bc; background: #f7f9f7; }
+    .asset-view-button:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+    .asset-view-button[hidden], .asset-details[hidden] { display: none; }
+    .asset.is-collapsed { box-shadow: none; }
     .asset-title-actions { position: relative; display: inline-flex; align-items: center; flex-wrap: wrap; gap: 8px; }
     .asset-name { font-size: 20px; font-weight: 700; }
     .asset-backtest-run { min-height: 30px; padding: 0 11px; border: 1px solid var(--green); border-radius: 5px; background: var(--surface); color: var(--green); cursor: pointer; font-size: 11px; font-weight: 700; }
@@ -359,6 +366,7 @@
       .asset { padding: 16px 14px; }
       .asset-header { align-items: flex-end; }
       .asset-header { flex-wrap: wrap; }
+      .asset-header-side { width: 100%; justify-content: space-between; }
       .current-daily strong { font-size: 16px; }
       .execution-plan { grid-template-columns: 1fr; gap: 18px; }
       .history-title-row { display: grid; gap: 8px; }
@@ -465,6 +473,7 @@
 
     const STORAGE_KEY = 'wangchangying-dca-status-v1';
     const RETIREMENT_STORAGE_KEY = 'wangchangying-dividend-status-v1';
+    const ASSET_DETAILS_STORAGE_KEY = 'wangchangying-asset-details-v1';
     const regions = [...new Set(assets.map(asset => asset.region))];
     const app = document.querySelector('#app');
     const toast = document.querySelector('#toast');
@@ -510,6 +519,19 @@
       if (!['waiting', 'opened', 'doubled'].includes(retirementState[asset.id])) retirementState[asset.id] = 'waiting';
     });
 
+    function loadAssetDetailsState() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(ASSET_DETAILS_STORAGE_KEY));
+        if (saved && typeof saved === 'object') return saved;
+      } catch (_) {}
+      return {};
+    }
+
+    const assetDetailsState = loadAssetDetailsState();
+    assets.forEach(asset => {
+      assetDetailsState[asset.id] = assetDetailsState[asset.id] !== false;
+    });
+
     function render() {
       app.innerHTML = `<h2 class="section-title">全球资产配置</h2>
         <p class="section-lead">每个标的按固定基础金额定投；达到回撤阈值时提升定投倍数。点击阶梯节点即可记录当前执行档位。</p>` + regions.map(region => {
@@ -530,8 +552,15 @@
       document.querySelectorAll('[data-backtest-run]').forEach(button => {
         button.addEventListener('click', event => {
           event.stopPropagation();
+          setAssetDetails(button.dataset.backtestRun, true);
           toggleBacktestMenu(button.dataset.backtestRun);
         });
+      });
+      document.querySelectorAll('[data-asset-expand]').forEach(button => {
+        button.addEventListener('click', () => setAssetDetails(button.dataset.assetExpand, true));
+      });
+      document.querySelectorAll('[data-asset-collapse]').forEach(button => {
+        button.addEventListener('click', () => setAssetDetails(button.dataset.assetCollapse, false));
       });
       document.addEventListener('click', closeBacktestMenus);
       document.addEventListener('keydown', event => {
@@ -544,6 +573,7 @@
     }
 
     function assetCard(asset) {
+      const detailsExpanded = assetDetailsState[asset.id];
       const choices = [0, 1, 2, 3, 4, 5].map(value => {
         const condition = value === 0 ? '暂停执行' : value === 1 ? '基础计划' : `回撤 ${asset.step * (value - 1)}%`;
         const multiple = value === 0 ? '0 倍' : `${value} 倍定投`;
@@ -552,24 +582,51 @@
       const topup = asset.topups
         ? `<div class="topup-list">${asset.topups.map(([drawdown, amount]) => `<div class="topup-row"><span>回撤 ${drawdown}%</span><b>补仓 ${amount}</b></div>`).join('')}</div>`
         : `<div class="no-topup">暂不考虑额外补仓</div>`;
-      return `<article class="asset">
+      return `<article class="asset ${detailsExpanded ? '' : 'is-collapsed'}" data-asset-card="${asset.id}">
         <div class="asset-header">
           <div>
             <div class="asset-heading"><span class="asset-name">${asset.name}</span><span class="weight">${asset.weight}%</span><span class="asset-title-actions"><button class="asset-backtest-run" type="button" data-backtest-run="${asset.id}" aria-haspopup="menu" aria-expanded="false" aria-controls="backtest-menu-${asset.id}" disabled>回测</button><div class="backtest-period-menu" id="backtest-menu-${asset.id}" role="menu" aria-label="选择回测时间段" hidden></div></span></div>
             <div class="asset-meta"><span>基础 <b>${asset.daily}</b></span><span>年定投 <b>${asset.annual.toLocaleString('zh-CN')} 元</b></span><span>每回撤 <b>${asset.step}%</b> 加一倍</span></div>
           </div>
-          <div class="current-daily"><span>当前每日定投</span><strong data-current-daily="${asset.id}">${formatDaily(asset)}</strong></div>
-        </div>
-        <div class="strategy-grid">
-          <div class="execution-plan">
-            <div><div class="strategy-label">回撤定投阶梯</div><div class="ladder" role="radiogroup" aria-label="${asset.name}定投倍数">${choices}</div></div>
-            <div><div class="strategy-label">额外补仓计划</div>${topup}</div>
+          <div class="asset-header-side">
+            <div class="current-daily"><span>当前每日定投</span><strong data-current-daily="${asset.id}">${formatDaily(asset)}</strong></div>
+            <div class="asset-view-actions">
+              <button class="asset-view-button" type="button" data-asset-expand="${asset.id}" aria-controls="asset-details-${asset.id}" aria-expanded="false" ${detailsExpanded ? 'hidden' : ''}>详情</button>
+              <button class="asset-view-button" type="button" data-asset-collapse="${asset.id}" aria-controls="asset-details-${asset.id}" aria-expanded="true" ${detailsExpanded ? '' : 'hidden'}>收起</button>
+            </div>
           </div>
-          <div><section class="holdings-panel" id="holdings-${asset.id}" aria-label="${asset.name}最新公开持仓"><div class="holdings-loading">等待加载最新公开持仓...</div></section></div>
         </div>
-        <section class="history-panel" id="history-${asset.id}" aria-label="${asset.name}历史净值"><div class="history-loading">等待加载历史净值...</div></section>
-        <section class="backtest-panel" id="backtest-${asset.id}" aria-label="${asset.name}阶梯定投回测"></section>
+        <div class="asset-details" id="asset-details-${asset.id}" ${detailsExpanded ? '' : 'hidden'}>
+          <div class="strategy-grid">
+            <div class="execution-plan">
+              <div><div class="strategy-label">回撤定投阶梯</div><div class="ladder" role="radiogroup" aria-label="${asset.name}定投倍数">${choices}</div></div>
+              <div><div class="strategy-label">额外补仓计划</div>${topup}</div>
+            </div>
+            <div><section class="holdings-panel" id="holdings-${asset.id}" aria-label="${asset.name}最新公开持仓"><div class="holdings-loading">等待加载最新公开持仓...</div></section></div>
+          </div>
+          <section class="history-panel" id="history-${asset.id}" aria-label="${asset.name}历史净值"><div class="history-loading">等待加载历史净值...</div></section>
+          <section class="backtest-panel" id="backtest-${asset.id}" aria-label="${asset.name}阶梯定投回测"></section>
+        </div>
       </article>`;
+    }
+
+    function setAssetDetails(assetId, expanded) {
+      const card = document.querySelector(`[data-asset-card="${assetId}"]`);
+      const details = document.querySelector(`#asset-details-${assetId}`);
+      if (!card || !details) return;
+      details.hidden = !expanded;
+      card.classList.toggle('is-collapsed', !expanded);
+      const expandButton = card.querySelector('[data-asset-expand]');
+      const collapseButton = card.querySelector('[data-asset-collapse]');
+      const moveFocus = document.activeElement === expandButton || document.activeElement === collapseButton;
+      expandButton.hidden = expanded;
+      collapseButton.hidden = !expanded;
+      expandButton.setAttribute('aria-expanded', String(expanded));
+      collapseButton.setAttribute('aria-expanded', String(expanded));
+      if (!expanded) closeBacktestMenus();
+      assetDetailsState[assetId] = expanded;
+      localStorage.setItem(ASSET_DETAILS_STORAGE_KEY, JSON.stringify(assetDetailsState));
+      if (moveFocus) (expanded ? collapseButton : expandButton).focus();
     }
 
     async function loadAllHistories() {
