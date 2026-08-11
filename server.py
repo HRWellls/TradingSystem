@@ -895,6 +895,49 @@ def _sina_stock_history(ak, code, start_date, end_date):
     return ak.stock_zh_a_daily(symbol=exchange_code, start_date=start_date, end_date=end_date, adjust="")
 
 
+def _parse_stock_valuation_rows(code, rows):
+    own = next((row for row in rows if str(row.get("CORRE_SECURITY_CODE")) == code), None)
+    median = next((row for row in rows if "中值" in str(row.get("CORRE_SECURITY_NAME", ""))), None)
+    if own is None or median is None:
+        raise ValueError("同行估值接口未返回个股或行业中值")
+
+    valuation = {}
+    for label, field in (("市盈率-TTM", "PE_TTM"), ("市净率-MRQ", "PB_MRQ"), ("EV/EBITDA-24A", "QYBS")):
+        value = _score_number(own.get(field))
+        peer = _score_number(median.get(field))
+        if value is not None or peer is not None:
+            valuation[label] = {"value": value, "peerMedian": peer}
+    if not valuation:
+        raise ValueError("同行估值接口未返回可用指标")
+    return valuation
+
+
+def _fetch_stock_valuation(code):
+    import requests
+
+    exchange = "SH" if code.startswith(("5", "6", "9")) else "SZ"
+    response = requests.get(
+        "https://datacenter.eastmoney.com/securities/api/data/v1/get",
+        params={
+            "reportName": "RPT_PCF10_INDUSTRY_CVALUE",
+            "columns": "ALL",
+            "quoteColumns": "",
+            "filter": f'(SECUCODE="{code}.{exchange}")',
+            "pageNumber": "",
+            "pageSize": "",
+            "sortTypes": "1",
+            "sortColumns": "PAIMING",
+            "source": "HSF10",
+            "client": "PC",
+        },
+        headers={"User-Agent": "Mozilla/5.0"},
+        timeout=20,
+    )
+    response.raise_for_status()
+    result = response.json().get("result") or {}
+    return _parse_stock_valuation_rows(code, result.get("data") or [])
+
+
 def calculate_stock_score(code):
     if code not in RETIREMENT_STOCKS:
         raise ValueError("该标的不在养老高股息列表中")
@@ -992,17 +1035,8 @@ def calculate_stock_score(code):
         warnings.append(f"资产负债表获取失败: {error}")
 
     try:
-        frame = ak.stock_zh_valuation_comparison_em(symbol=f"SH{code}")
-        if frame is not None and not frame.empty:
-            own = frame.iloc[0]
-            median = frame[frame["简称"].astype(str).str.contains("中值")].iloc[0] if (frame["简称"].astype(str).str.contains("中值")).any() else None
-            for field in ["市盈率-TTM", "市净率-MRQ", "EV/EBITDA-24A"]:
-                if field not in frame.columns:
-                    continue
-                value = _score_number(own.get(field))
-                peer = _score_number(median.get(field)) if median is not None else None
-                valuation[field] = {"value": value, "peerMedian": peer}
-        sources.append("ak.stock_zh_valuation_comparison_em")
+        valuation = _fetch_stock_valuation(code)
+        sources.append("东方财富同行估值")
     except Exception as error:
         warnings.append(f"同行估值获取失败: {error}")
 

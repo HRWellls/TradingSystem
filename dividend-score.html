@@ -56,7 +56,7 @@
   </style>
 </head>
 <body>
-  <header class="topbar"><div class="topbar-inner"><a class="brand" href="/system.html"><div class="mark">盈</div><div><strong>望长盈</strong><span>养老高股息评分</span></div></a><div class="top-actions"><button class="icon-button" id="refresh" type="button">刷新数据</button><a class="icon-button" href="/system.html">返回</a></div></div></header>
+  <header class="topbar"><div class="topbar-inner"><a class="brand" href="/system.html"><div class="mark">盈</div><div><strong>望长盈</strong><span>养老高股息评分</span></div></a><div class="top-actions"><button class="icon-button" id="refresh" type="button">刷新数据</button><a class="icon-button" id="return" href="/system.html#retirement-stocks">返回</a></div></div></header>
   <main id="app"><div class="loading">正在读取公开财务与分红数据...</div></main>
   <script>
     const app = document.querySelector('#app');
@@ -80,11 +80,22 @@
       app.innerHTML = `<div class="eyebrow">${escapeHtml(data.code)} · 数据截止 ${escapeHtml(data.dataAsOf)}</div><h1>${escapeHtml(data.name)}</h1><p class="subtitle">评分基于已披露的免费公开数据自动计算。评分细则与缺失处理遵循《高股息养老股评分体系》；特别分红、行业周期和治理判断不会被伪装为客观分数。</p><section class="overview"><div><div class="score-number">${score}<small>/100</small></div><div class="score-caption">原始分 ${data.rawScore}/${data.effectiveMax || 100} · ${data.normalizedScore === null ? '无法归一化' : '按有效指标归一化'}</div></div><div class="metrics"><div class="metric"><span>当前价格</span><strong>${yuan(data.price)} 元</strong></div><div class="metric"><span>目标股息率</span><strong>${data.targetYield.toFixed(1)}%</strong></div><div class="metric"><span>抓取时间</span><strong>${new Date(data.fetchedAt).toLocaleString('zh-CN', { hour12:false })}</strong></div></div></section><section class="section"><h2>自动评分明细</h2><p class="section-lead">分数只基于已获取的结构化字段。标注“数据不足”的项不代表通过，需在后续接口补齐后再计算。</p><div class="dimension-list">${dimensions}</div></section><section class="section"><div class="info-grid"><div><h3>人工复核后才能买入</h3><ul class="plain-list">${data.manualReview.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div><div><h3>数据源与获取状态</h3><ul class="plain-list">${data.sources.map(item => `<li>${escapeHtml(item)}</li>`).join('')}${data.warnings.map(item => `<li class="missing">${escapeHtml(item)}</li>`).join('') || '<li>本次请求未报告接口错误</li>'}</ul></div></div></section><div class="notice">分数仅用于研究和执行纪律，不构成买入建议。出现自动否决信号、数据缺失或人工复核未完成时，不应仅依据总分建仓。</div>`;
     }
     async function load(forceRefresh = false) {
-      if (!/^\d{6}$/.test(code || '')) { app.innerHTML = '<div class="error">未指定有效证券代码。<a class="icon-button" href="/system.html">返回列表</a></div>'; return; }
+      if (!/^\d{6}$/.test(code || '')) { app.innerHTML = '<div class="error">未指定有效证券代码。<a class="icon-button" href="/system.html#retirement-stocks">返回列表</a></div>'; return; }
       app.innerHTML = '<div class="loading">正在读取公开财务与分红数据...</div>';
       try { const response = await fetch(`/api/stocks/${code}/score${forceRefresh ? '?refresh=1' : ''}`); const data = await response.json(); if (!response.ok) throw new Error(data.error || '评分数据获取失败'); render(data); } catch (error) { app.innerHTML = `<div class="error"><span>${escapeHtml(error.message)}</span><button class="icon-button" type="button" id="retry">重新加载</button></div>`; document.querySelector('#retry').addEventListener('click', () => load(true)); }
     }
     document.querySelector('#refresh').addEventListener('click', () => load(true));
+    document.querySelector('#return').addEventListener('click', event => {
+      try {
+        const previousPage = new URL(document.referrer);
+        if (previousPage.origin === location.origin && previousPage.pathname.endsWith('/system.html') && history.length > 1) {
+          event.preventDefault();
+          history.back();
+        }
+      } catch (_) {
+        // Keep the link's retirement-section fallback for direct page visits.
+      }
+    });
     load();
   </script>
 </body>
