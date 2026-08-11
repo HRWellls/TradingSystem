@@ -33,6 +33,7 @@ FUND_CODES = {
     "006282",
     "000369",
     "006308",
+    "005613",
     "008163",
     "022436",
 }
@@ -50,6 +51,7 @@ BACKTEST_STRATEGIES = {
     "019547": {"base_amount": 20.0, "currency": "CNY", "step": 10.0, "max_multiple": 5},
     "000369": {"base_amount": 10.0, "currency": "CNY", "step": 7.5, "max_multiple": 5},
     "006308": {"base_amount": 10.0, "currency": "CNY", "step": 10.0, "max_multiple": 5},
+    "005613": {"base_amount": 10.0, "currency": "CNY", "step": 5.0, "max_multiple": 5},
     "007280": {"base_amount": 20.0, "currency": "CNY", "step": 10.0, "max_multiple": 5},
     "006282": {"base_amount": 20.0, "currency": "CNY", "step": 7.5, "max_multiple": 5},
     "008163": {"base_amount": 10.0, "currency": "CNY", "step": 5.0, "max_multiple": 5},

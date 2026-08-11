@@ -1,6 +1,6 @@
 import unittest
 
-from server import calculate_dca_backtest
+from server import BACKTEST_STRATEGIES, calculate_dca_backtest
 
 
 def history(values):
@@ -14,6 +14,9 @@ def history(values):
 
 
 class DcaBacktestTests(unittest.TestCase):
+    def test_developed_reits_matches_dividend_low_vol_strategy(self):
+        self.assertEqual(BACKTEST_STRATEGIES["005613"], BACKTEST_STRATEGIES["008163"])
+
     def test_period_filters_chart_ranges_and_all_history(self):
         points = [
             {"date": "2015-08-10", "nav": 0.9},

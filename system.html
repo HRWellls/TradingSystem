@@ -424,8 +424,8 @@
     </section>
 
     <section class="summary" aria-label="交易系统概览">
-      <div class="summary-item"><div class="summary-label">基础年定投</div><div class="summary-value">44,000 <small>元</small></div></div>
-      <div class="summary-item"><div class="summary-label">当前年化计划</div><div class="summary-value" id="annualPlan">44,000 <small>元</small></div></div>
+      <div class="summary-item"><div class="summary-label">基础年定投</div><div class="summary-value">46,500 <small>元</small></div></div>
+      <div class="summary-item"><div class="summary-label">当前年化计划</div><div class="summary-value" id="annualPlan">46,500 <small>元</small></div></div>
       <div class="summary-item"><div class="summary-label">当前定投档位</div><div class="multiple-counts" id="multipleCounts"></div></div>
     </section>
 
@@ -450,15 +450,17 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
+    const dividendLowVolTopups = [[5, '2K'], [10, '4K'], [15, '7K'], [20, '11K'], [25, '16K'], [30, '23K']];
     const assets = [
       { id: 'global-multi', code: '003629', region: '美股', name: '摩根全球多元配置(QDII-FOF)A', weight: 20, annual: 9000, daily: '6 美元/日', step: 5 },
       { id: 'sp500', code: '017641', region: '美股', name: '摩根标普500指数(QDII)A', weight: 15, annual: 7500, daily: '30 元/日', step: 7.5, topups: [[5, '2K'], [10, '3K'], [15, '4K'], [20, '6K'], [25, '8K'], [30, '11K'], [35, '16K'], [40, '23K'], [45, '33K'], [50, '47K']] },
       { id: 'nasdaq100', code: '019547', region: '美股', name: '招商纳斯达克100ETF联接(QDII)A', weight: 10, annual: 5000, daily: '20 元/日', step: 10, topups: [[7.5, '1K'], [15, '1.5K'], [22.5, '2K'], [30, '3K'], [37.5, '4K'], [45, '5.5K'], [52.5, '8K'], [60, '11.5K'], [67.5, '16.5K'], [75, '24K']] },
-      { id: 'global-health', code: '000369', region: '美股', name: '广发全球医疗保健指数(QDII)A', weight: 5, annual: 2500, daily: '10 元/日', step: 7.5 },
-      { id: 'global-consumer', code: '006308', region: '美股', name: '汇添富全球消费行业混合(QDII)A', weight: 5, annual: 2500, daily: '10 元/日', step: 10 },
+      { id: 'developed-reits', code: '005613', region: '美股', name: '摩根富时发达市场REITs指数(QDII)A', weight: 10, annual: 2500, daily: '10 元/日', step: 5, topups: dividendLowVolTopups },
+      { id: 'global-health', code: '000369', region: '美股', name: '广发全球医疗保健指数(QDII)A', weight: 0, annual: 2500, daily: '10 元/日', step: 7.5 },
+      { id: 'global-consumer', code: '006308', region: '美股', name: '汇添富全球消费行业混合(QDII)A', weight: 0, annual: 2500, daily: '10 元/日', step: 10 },
       { id: 'japan', code: '007280', region: '日本', name: '摩根日本精选股票(QDII)A', weight: 10, annual: 5000, daily: '20 元/日', step: 10 },
       { id: 'europe', code: '006282', region: '欧洲', name: '摩根欧洲动力策略股票(QDII)A', weight: 10, annual: 5000, daily: '20 元/日', step: 7.5 },
-      { id: 'dividend-low-vol', code: '008163', region: 'A股', name: '南方红利低波50ETF联接A', weight: 15, annual: 2500, daily: '10 元/日', step: 5, topups: [[5, '2K'], [10, '4K'], [15, '7K'], [20, '11K'], [25, '16K'], [30, '23K']] },
+      { id: 'dividend-low-vol', code: '008163', region: 'A股', name: '南方红利低波50ETF联接A', weight: 15, annual: 2500, daily: '10 元/日', step: 5, topups: dividendLowVolTopups },
       { id: 'csi-a500', code: '022436', region: 'A股', name: '摩根中证A500ETF联接A', weight: 10, annual: 5000, daily: '20 元/日', step: 10, topups: [[10, '1K'], [20, '2K'], [30, '4K'], [40, '8K'], [50, '16K']] }
     ];
 
