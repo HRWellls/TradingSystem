@@ -180,7 +180,7 @@
     .bond-card-meta {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
       color: var(--muted);
       font-size: 12px;
     }
@@ -194,6 +194,30 @@
     .bond-card-meta b {
       color: var(--ink);
       font-weight: 600;
+    }
+
+    .bond-fund-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 8px;
+      border-top: 1px solid var(--line);
+    }
+
+    .bond-fund-row:first-of-type {
+      margin-top: 6px;
+    }
+
+    .bond-fund-name {
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .bond-fund-ratio {
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 700;
     }
 
     .category-summary {
@@ -296,9 +320,11 @@
           <span class="bond-card-ratio">15%</span>
         </div>
         <div class="bond-card-meta">
-          <div class="bond-card-meta-row"><span>债券类型</span><b>利率债</b></div>
-          <div class="bond-card-meta-row"><span>期限范围</span><b>1-3年</b></div>
-          <div class="bond-card-meta-row"><span>主要品种</span><b>国债、政策性金融债</b></div>
+          <div class="bond-card-meta-row"><span>期限范围</span><b>0-3年</b></div>
+          <div class="bond-fund-row">
+            <span class="bond-fund-name">平安0-3年期政策性金融债债券A</span>
+            <span class="bond-fund-ratio">15%</span>
+          </div>
         </div>
       </div>
 
@@ -308,9 +334,15 @@
           <span class="bond-card-ratio">30%</span>
         </div>
         <div class="bond-card-meta">
-          <div class="bond-card-meta-row"><span>债券类型</span><b>利率债</b></div>
           <div class="bond-card-meta-row"><span>期限范围</span><b>3-7年</b></div>
-          <div class="bond-card-meta-row"><span>主要品种</span><b>国债、政策性金融债</b></div>
+          <div class="bond-fund-row">
+            <span class="bond-fund-name">永赢邦利债券A</span>
+            <span class="bond-fund-ratio">20%</span>
+          </div>
+          <div class="bond-fund-row">
+            <span class="bond-fund-name">博时裕顺纯债A</span>
+            <span class="bond-fund-ratio">10%</span>
+          </div>
         </div>
       </div>
 
@@ -320,9 +352,15 @@
           <span class="bond-card-ratio">15%</span>
         </div>
         <div class="bond-card-meta">
-          <div class="bond-card-meta-row"><span>债券类型</span><b>利率债</b></div>
-          <div class="bond-card-meta-row"><span>期限范围</span><b>7年以上</b></div>
-          <div class="bond-card-meta-row"><span>主要品种</span><b>国债、政策性金融债</b></div>
+          <div class="bond-card-meta-row"><span>期限范围</span><b>7-10年</b></div>
+          <div class="bond-fund-row">
+            <span class="bond-fund-name">广发中债7-10年国开债A</span>
+            <span class="bond-fund-ratio">10%</span>
+          </div>
+          <div class="bond-fund-row">
+            <span class="bond-fund-name">博时中债7-10年政策性金融债指数A</span>
+            <span class="bond-fund-ratio">5%</span>
+          </div>
         </div>
       </div>
 
@@ -332,9 +370,15 @@
           <span class="bond-card-ratio">10%</span>
         </div>
         <div class="bond-card-meta">
-          <div class="bond-card-meta-row"><span>债券类型</span><b>信用债</b></div>
-          <div class="bond-card-meta-row"><span>期限范围</span><b>1-3年</b></div>
-          <div class="bond-card-meta-row"><span>主要品种</span><b>AAA级企业债、公司债</b></div>
+          <div class="bond-card-meta-row"><span>期限范围</span><b>90-120天</b></div>
+          <div class="bond-fund-row">
+            <span class="bond-fund-name">兴业稳福120天A</span>
+            <span class="bond-fund-ratio">5%</span>
+          </div>
+          <div class="bond-fund-row">
+            <span class="bond-fund-name">创金合信恒睿90天A</span>
+            <span class="bond-fund-ratio">5%</span>
+          </div>
         </div>
       </div>
 
@@ -344,9 +388,15 @@
           <span class="bond-card-ratio">20%</span>
         </div>
         <div class="bond-card-meta">
-          <div class="bond-card-meta-row"><span>债券类型</span><b>信用债</b></div>
           <div class="bond-card-meta-row"><span>期限范围</span><b>3-7年</b></div>
-          <div class="bond-card-meta-row"><span>主要品种</span><b>AAA级企业债、公司债</b></div>
+          <div class="bond-fund-row">
+            <span class="bond-fund-name">长盛盛裕纯债D</span>
+            <span class="bond-fund-ratio">10%</span>
+          </div>
+          <div class="bond-fund-row">
+            <span class="bond-fund-name">格林泓鑫纯债A</span>
+            <span class="bond-fund-ratio">10%</span>
+          </div>
         </div>
       </div>
 
@@ -356,9 +406,11 @@
           <span class="bond-card-ratio">10%</span>
         </div>
         <div class="bond-card-meta">
-          <div class="bond-card-meta-row"><span>债券类型</span><b>信用债</b></div>
           <div class="bond-card-meta-row"><span>期限范围</span><b>7年以上</b></div>
-          <div class="bond-card-meta-row"><span>主要品种</span><b>AAA级企业债、公司债</b></div>
+          <div class="bond-fund-row">
+            <span class="bond-fund-name">富安达富利纯债A</span>
+            <span class="bond-fund-ratio">10%</span>
+          </div>
         </div>
       </div>
     </div>
