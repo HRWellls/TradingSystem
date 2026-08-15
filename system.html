@@ -560,7 +560,7 @@
         const normalized = Math.max(0, asset.weight) / allocationBase;
         const length = normalized * circumference;
         const segment = normalized > 0
-          ? `<circle class="allocation-segment" cx="${center}" cy="${center}" r="${radius}" stroke="${colors[index % colors.length]}" stroke-dasharray="${length.toFixed(3)} ${(circumference - length).toFixed(3)}" stroke-dashoffset="${(-offset).toFixed(3)}"><title>${escapeHtml(asset.name)} ${asset.weight}%</title></circle>`
+          ? `<circle class="allocation-segment" cx="${center}" cy="${center}" r="${radius}" stroke="${colors[index % colors.length]}" stroke-dasharray="${length.toFixed(3)} ${(circumference - length).toFixed(3)}" stroke-dashoffset="${(-offset).toFixed(3)}" data-asset-link="${asset.id}" style="cursor:pointer;"><title>${escapeHtml(asset.name)} ${asset.weight}%</title></circle>`
           : '';
         const startAngle = -90 + offset / circumference * 360;
         const midAngle = startAngle + normalized * 180;
@@ -576,9 +576,25 @@
         const labelY = center + Math.sin(radians) * labelRadius;
         const anchor = index === assets.length - 1 || Math.cos(radians) >= 0 ? 'start' : 'end';
         offset += length;
-        return `${segment}<line class="allocation-label-line" x1="${lineStartX.toFixed(1)}" y1="${lineStartY.toFixed(1)}" x2="${lineEndX.toFixed(1)}" y2="${lineEndY.toFixed(1)}"></line><text class="allocation-label" x="${labelX.toFixed(1)}" y="${(labelY - 1).toFixed(1)}" text-anchor="${anchor}">${shortNames[index]}</text><text class="allocation-label-value" x="${labelX.toFixed(1)}" y="${(labelY + 11).toFixed(1)}" text-anchor="${anchor}">${asset.weight}%</text>`;
+        return `${segment}<line class="allocation-label-line" x1="${lineStartX.toFixed(1)}" y1="${lineStartY.toFixed(1)}" x2="${lineEndX.toFixed(1)}" y2="${lineEndY.toFixed(1)}" data-asset-link="${asset.id}" style="cursor:pointer;"></line><text class="allocation-label" x="${labelX.toFixed(1)}" y="${(labelY - 1).toFixed(1)}" text-anchor="${anchor}" data-asset-link="${asset.id}" style="cursor:pointer;">${shortNames[index]}</text><text class="allocation-label-value" x="${labelX.toFixed(1)}" y="${(labelY + 11).toFixed(1)}" text-anchor="${anchor}" data-asset-link="${asset.id}" style="cursor:pointer;">${asset.weight}%</text>`;
       }).join('');
       container.innerHTML = `<svg class="allocation-chart" viewBox="0 0 380 380" role="img" aria-label="各基金标的配置占比环形图"><circle class="allocation-track" cx="190" cy="190" r="95"></circle>${segments}</svg>`;
+
+      container.querySelectorAll('[data-asset-link]').forEach(element => {
+        element.addEventListener('click', event => {
+          const assetId = element.getAttribute('data-asset-link');
+          const card = document.querySelector(`[data-asset-card="${assetId}"]`);
+          if (card) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            setTimeout(() => {
+              const expandButton = card.querySelector('[data-asset-expand]');
+              if (expandButton && !expandButton.hidden) {
+                setAssetDetails(assetId, true);
+              }
+            }, 600);
+          }
+        });
+      });
     }
 
     const assetDetailsState = loadAssetDetailsState();
