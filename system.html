@@ -97,10 +97,22 @@
       margin-bottom: 28px;
     }
 
+    .intro-copy { min-width: 0; }
+    .intro-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 18px 24px; width: 100%; }
     h1 { margin: 0; font-family: Georgia, "Songti SC", serif; font-size: clamp(30px, 5vw, 46px); font-weight: 600; }
     .save-state { color: var(--green); font-size: 12px; white-space: nowrap; }
     .journey { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 18px; margin-top: 12px; color: var(--muted); font-size: 14px; }
     .journey strong { color: var(--green); font-family: Georgia, "Songti SC", serif; font-size: 20px; }
+
+    .allocation-widget { width: 500px; height: 380px; flex: 0 0 auto; margin-left: auto; }
+    .allocation-chart { width: 500px; height: 380px; display: block; overflow: visible; }
+    .allocation-chart circle { fill: none; stroke-width: 20; }
+    .allocation-track { stroke: #edf1ee; }
+    .allocation-segment { transform: rotate(-90deg); transform-origin: 50% 50%; transition: opacity .2s ease; }
+    .allocation-segment:hover { opacity: .72; }
+    .allocation-label-line { stroke: var(--line); stroke-width: 1; }
+    .allocation-label { fill: var(--muted); font-size: 10px; font-weight: 650; }
+    .allocation-label-value { fill: var(--ink); font-size: 9px; }
 
     .principles {
       display: grid;
@@ -359,6 +371,9 @@
       .topbar-inner { min-height: 62px; }
       main { padding-top: 28px; }
       .intro { grid-template-columns: 1fr; gap: 8px; }
+      .intro-title-row { align-items: flex-start; gap: 14px; }
+      .allocation-widget { width: 100%; height: 320px; margin-left: 0; }
+      .allocation-chart { width: 100%; height: 320px; }
       .save-state { white-space: normal; }
       .summary-item + .summary-item { padding-left: 12px; }
       .summary-item:last-child { padding-left: 0; }
@@ -410,8 +425,11 @@
 
   <main>
     <section class="intro">
-      <div>
-        <h1>望尔长盈。</h1>
+      <div class="intro-copy">
+        <div class="intro-title-row">
+          <h1>望尔长盈。</h1>
+          <div class="allocation-widget" id="allocationDonut" aria-label="各标的配置占比"></div>
+        </div>
         <div class="journey"><span>始于 2025 年 12 月 5 日</span><span>已坚持定投 <strong id="investingDays">0</strong> 天</span></div>
       </div>
       <div class="save-state" id="saveState">已在本地保存</div>
@@ -456,8 +474,6 @@
       { id: 'sp500', code: '017641', region: '美股', name: '摩根标普500指数(QDII)A', weight: 15, annual: 7500, daily: '30 元/日', step: 7.5, topups: [[5, '2K'], [10, '3K'], [15, '4K'], [20, '6K'], [25, '8K'], [30, '11K'], [35, '16K'], [40, '23K'], [45, '33K'], [50, '47K']] },
       { id: 'nasdaq100', code: '019547', region: '美股', name: '招商纳斯达克100ETF联接(QDII)A', weight: 10, annual: 5000, daily: '20 元/日', step: 10, topups: [[7.5, '1K'], [15, '1.5K'], [22.5, '2K'], [30, '3K'], [37.5, '4K'], [45, '5.5K'], [52.5, '8K'], [60, '11.5K'], [67.5, '16.5K'], [75, '24K']] },
       { id: 'developed-reits', code: '005613', region: '美股', name: '摩根富时发达市场REITs指数(QDII)A', weight: 10, annual: 2500, daily: '10 元/日', step: 5, topups: dividendLowVolTopups },
-      { id: 'global-health', code: '000369', region: '美股', name: '广发全球医疗保健指数(QDII)A', weight: 0, annual: 2500, daily: '10 元/日', step: 7.5 },
-      { id: 'global-consumer', code: '006308', region: '美股', name: '汇添富全球消费行业混合(QDII)A', weight: 0, annual: 2500, daily: '10 元/日', step: 10 },
       { id: 'japan', code: '007280', region: '日本', name: '摩根日本精选股票(QDII)A', weight: 10, annual: 5000, daily: '20 元/日', step: 10 },
       { id: 'europe', code: '006282', region: '欧洲', name: '摩根欧洲动力策略股票(QDII)A', weight: 10, annual: 5000, daily: '20 元/日', step: 7.5 },
       { id: 'dividend-low-vol', code: '008163', region: 'A股', name: '南方红利低波50ETF联接A', weight: 15, annual: 2500, daily: '10 元/日', step: 5, topups: dividendLowVolTopups },
@@ -529,12 +545,49 @@
       return {};
     }
 
+    function renderAllocationDonut() {
+      const container = document.querySelector('#allocationDonut');
+      if (!container) return;
+      const colors = ['#24966b', '#3fae7b', '#6cbe78', '#e6ad3f', '#f08b5f', '#db6c78', '#7d91d7', '#ac82d1', '#4eabc0', '#94b84d'];
+      const shortNames = ['全球配置', '标普500', '纳斯达克', '发达市场', '日本精选', '欧洲动力', '红利低波', '中证A500'];
+      const allocationBase = 100;
+      const center = 190;
+      const radius = 95;
+      const labelRadius = 150;
+      const circumference = 2 * Math.PI * radius;
+      let offset = 0;
+      const segments = assets.map((asset, index) => {
+        const normalized = Math.max(0, asset.weight) / allocationBase;
+        const length = normalized * circumference;
+        const segment = normalized > 0
+          ? `<circle class="allocation-segment" cx="${center}" cy="${center}" r="${radius}" stroke="${colors[index % colors.length]}" stroke-dasharray="${length.toFixed(3)} ${(circumference - length).toFixed(3)}" stroke-dashoffset="${(-offset).toFixed(3)}"><title>${escapeHtml(asset.name)} ${asset.weight}%</title></circle>`
+          : '';
+        const startAngle = -90 + offset / circumference * 360;
+        const midAngle = startAngle + normalized * 180;
+        const labelAngle = index === assets.length - 1 ? -28 : midAngle;
+        const radians = labelAngle * Math.PI / 180;
+        const lineStartRadius = radius + 5;
+        const lineEndRadius = labelRadius - 12;
+        const lineStartX = center + Math.cos(radians) * lineStartRadius;
+        const lineStartY = center + Math.sin(radians) * lineStartRadius;
+        const lineEndX = center + Math.cos(radians) * lineEndRadius;
+        const lineEndY = center + Math.sin(radians) * lineEndRadius;
+        const labelX = center + Math.cos(radians) * labelRadius;
+        const labelY = center + Math.sin(radians) * labelRadius;
+        const anchor = index === assets.length - 1 || Math.cos(radians) >= 0 ? 'start' : 'end';
+        offset += length;
+        return `${segment}<line class="allocation-label-line" x1="${lineStartX.toFixed(1)}" y1="${lineStartY.toFixed(1)}" x2="${lineEndX.toFixed(1)}" y2="${lineEndY.toFixed(1)}"></line><text class="allocation-label" x="${labelX.toFixed(1)}" y="${(labelY - 1).toFixed(1)}" text-anchor="${anchor}">${shortNames[index]}</text><text class="allocation-label-value" x="${labelX.toFixed(1)}" y="${(labelY + 11).toFixed(1)}" text-anchor="${anchor}">${asset.weight}%</text>`;
+      }).join('');
+      container.innerHTML = `<svg class="allocation-chart" viewBox="0 0 380 380" role="img" aria-label="各基金标的配置占比环形图"><circle class="allocation-track" cx="190" cy="190" r="95"></circle>${segments}</svg>`;
+    }
+
     const assetDetailsState = loadAssetDetailsState();
     assets.forEach(asset => {
       assetDetailsState[asset.id] = assetDetailsState[asset.id] !== false;
     });
 
     function render() {
+      renderAllocationDonut();
       app.innerHTML = `<h2 class="section-title">全球资产配置</h2>
         <p class="section-lead">每个标的按固定基础金额定投；达到回撤阈值时提升定投倍数。点击阶梯节点即可记录当前执行档位。</p>` + regions.map(region => {
         const list = assets.filter(asset => asset.region === region);
