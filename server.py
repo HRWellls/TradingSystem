@@ -1190,7 +1190,7 @@ class TradingSystemHandler(SimpleHTTPRequestHandler):
                     self.send_json(502, {"error": "评分数据获取失败", "detail": str(error)})
             return
         if parsed.path == "/":
-            self.path = "/system.html"
+            self.path = "/index.html"
         super().do_GET()
 
     def do_POST(self):

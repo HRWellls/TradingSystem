@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>望长盈 · 资产配置</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #18201d;
+      --muted: #68716c;
+      --line: #dfe4e1;
+      --paper: #f7f8f6;
+      --surface: #ffffff;
+      --green: #176b4d;
+      --green-soft: #e7f1ec;
+      --amber: #a76516;
+      --shadow: 0 1px 2px rgba(20, 32, 27, .04), 0 8px 24px rgba(20, 32, 27, .05);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      letter-spacing: 0;
+    }
+
+    .topbar {
+      position: sticky;
+      z-index: 10;
+      top: 0;
+      border-bottom: 1px solid rgba(223, 228, 225, .9);
+      background: rgba(247, 248, 246, .92);
+      backdrop-filter: blur(14px);
+    }
+
+    .topbar-inner {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      min-height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; }
+
+    .mark {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: var(--green);
+      color: white;
+      font-family: Georgia, serif;
+      font-size: 20px;
+    }
+
+    .brand strong { display: block; font-size: 16px; }
+    .brand span { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; }
+
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 16px;
+    }
+
+    .overview {
+      width: min(680px, 100%);
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-family: Georgia, "Songti SC", serif;
+      font-size: clamp(32px, 5vw, 48px);
+      font-weight: 600;
+    }
+
+    .subtitle {
+      margin: 0 0 48px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    .allocation-container {
+      margin: 0 auto 36px;
+      max-width: 560px;
+    }
+
+    .allocation-chart {
+      width: 100%;
+      height: auto;
+      display: block;
+      overflow: visible;
+    }
+
+    .allocation-chart circle {
+      fill: none;
+      stroke-width: 28;
+      transition: opacity .2s ease, stroke-width .2s ease;
+    }
+
+    .allocation-track { stroke: #edf1ee; }
+
+    .allocation-segment {
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+      cursor: pointer;
+    }
+
+    .allocation-segment:hover {
+      opacity: .75;
+      stroke-width: 32;
+    }
+
+    .allocation-segment.clickable:active {
+      opacity: .6;
+    }
+
+    .allocation-label-line {
+      stroke: var(--line);
+      stroke-width: 1;
+    }
+
+    .allocation-label {
+      fill: var(--ink);
+      font-size: 16px;
+      font-weight: 650;
+      cursor: pointer;
+      transition: fill .2s ease;
+    }
+
+    .allocation-label:hover {
+      fill: var(--green);
+    }
+
+    .allocation-label-value {
+      fill: var(--muted);
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      margin: 0 auto;
+      max-width: 560px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--line);
+    }
+
+    .stat {
+      padding: 20px 16px;
+      background: var(--surface);
+      text-align: center;
+    }
+
+    .stat-label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .stat-value {
+      display: block;
+      font-family: Georgia, serif;
+      font-size: 28px;
+      font-weight: 600;
+    }
+
+    .stat-value small {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .note {
+      margin-top: 36px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 560px) {
+      .topbar-inner { min-height: 62px; }
+      main { padding: 28px 16px; }
+      .subtitle { margin-bottom: 36px; font-size: 14px; }
+      .stats { grid-template-columns: 1fr; }
+      .stat-value { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="mark">盈</div>
+        <div><strong>望长盈</strong><span>长期投资交易系统</span></div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="overview">
+      <h1>资产配置总览</h1>
+      <p class="subtitle">均衡配置三大类资产，穿越周期、稳健增长</p>
+
+      <div class="allocation-container" id="allocationChart" aria-label="资产配置比例"></div>
+
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-label">股票</span>
+          <span class="stat-value">40<small>%</small></span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">债券</span>
+          <span class="stat-value">30<small>%</small></span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">现金</span>
+          <span class="stat-value">30<small>%</small></span>
+        </div>
+      </div>
+
+      <p class="note">点击环形图中的股票部分，查看详细持仓与定投策略</p>
+    </div>
+  </main>
+
+  <script>
+    function renderAllocationChart() {
+      const container = document.querySelector('#allocationChart');
+      if (!container) return;
+
+      const assets = [
+        { name: '股票', ratio: 40, color: '#176b4d', link: '/system.html' },
+        { name: '债券', ratio: 30, color: '#a76516', link: null },
+        { name: '现金', ratio: 30, color: '#68716c', link: null }
+      ];
+
+      const center = 220;
+      const radius = 110;
+      const labelRadius = 175;
+      const circumference = 2 * Math.PI * radius;
+      let offset = 0;
+
+      const segments = assets.map((asset, index) => {
+        const normalized = asset.ratio / 100;
+        const length = normalized * circumference;
+        const startAngle = -90 + offset / circumference * 360;
+        const midAngle = startAngle + normalized * 180;
+        const radians = midAngle * Math.PI / 180;
+
+        const lineStartRadius = radius + 14;
+        const lineEndRadius = labelRadius - 16;
+        const lineStartX = center + Math.cos(radians) * lineStartRadius;
+        const lineStartY = center + Math.sin(radians) * lineStartRadius;
+        const lineEndX = center + Math.cos(radians) * lineEndRadius;
+        const lineEndY = center + Math.sin(radians) * lineEndRadius;
+        const labelX = center + Math.cos(radians) * labelRadius;
+        const labelY = center + Math.sin(radians) * labelRadius;
+        const anchor = Math.cos(radians) >= 0 ? 'start' : 'end';
+
+        const segment = `<circle class="allocation-segment ${asset.link ? 'clickable' : ''}" cx="${center}" cy="${center}" r="${radius}" stroke="${asset.color}" stroke-dasharray="${length.toFixed(3)} ${(circumference - length).toFixed(3)}" stroke-dashoffset="${(-offset).toFixed(3)}" data-asset-index="${index}"><title>${asset.name} ${asset.ratio}%${asset.link ? ' (点击查看详情)' : ''}</title></circle>`;
+
+        const label = `<line class="allocation-label-line" x1="${lineStartX.toFixed(1)}" y1="${lineStartY.toFixed(1)}" x2="${lineEndX.toFixed(1)}" y2="${lineEndY.toFixed(1)}"></line><text class="allocation-label" x="${labelX.toFixed(1)}" y="${(labelY - 2).toFixed(1)}" text-anchor="${anchor}" data-asset-index="${index}">${asset.name}</text><text class="allocation-label-value" x="${labelX.toFixed(1)}" y="${(labelY + 16).toFixed(1)}" text-anchor="${anchor}" data-asset-index="${index}">${asset.ratio}%</text>`;
+
+        offset += length;
+        return segment + label;
+      }).join('');
+
+      container.innerHTML = `<svg class="allocation-chart" viewBox="0 0 440 440" role="img" aria-label="资产配置比例环形图"><circle class="allocation-track" cx="${center}" cy="${center}" r="${radius}"></circle>${segments}</svg>`;
+
+      container.querySelectorAll('[data-asset-index]').forEach(element => {
+        element.addEventListener('click', () => {
+          const index = parseInt(element.getAttribute('data-asset-index'));
+          const asset = assets[index];
+          if (asset.link) {
+            window.location.href = asset.link;
+          }
+        });
+      });
+    }
+
+    renderAllocationChart();
+  </script>
+</body>
+</html>
