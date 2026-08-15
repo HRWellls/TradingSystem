@@ -564,7 +564,7 @@
           : '';
         const startAngle = -90 + offset / circumference * 360;
         const midAngle = startAngle + normalized * 180;
-        const labelAngle = index === assets.length - 1 ? -28 : midAngle;
+        const labelAngle = midAngle;
         const radians = labelAngle * Math.PI / 180;
         const lineStartRadius = radius + 5;
         const lineEndRadius = labelRadius - 12;
