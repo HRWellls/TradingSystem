@@ -202,10 +202,16 @@
       align-items: center;
       padding-top: 8px;
       border-top: 1px solid var(--line);
+      cursor: pointer;
+      transition: background .15s ease;
     }
 
     .bond-fund-row:first-of-type {
       margin-top: 6px;
+    }
+
+    .bond-fund-row:hover {
+      background: #f7f9f7;
     }
 
     .bond-fund-name {
@@ -214,10 +220,270 @@
       font-weight: 600;
     }
 
+    .bond-fund-code {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 10px;
+    }
+
     .bond-fund-ratio {
       color: var(--ink);
       font-size: 13px;
       font-weight: 700;
+    }
+
+    .bond-fund-details {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .bond-fund-details[hidden] {
+      display: none;
+    }
+
+    .history-panel {
+      margin-top: 0;
+    }
+
+    .history-head {
+      margin-bottom: 15px;
+    }
+
+    .history-title-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .history-title {
+      margin: 0;
+      font-size: 13px;
+    }
+
+    .range-control {
+      display: inline-grid;
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(48px, auto);
+      gap: 2px;
+      padding: 3px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #f5f7f5;
+    }
+
+    .range-button {
+      min-height: 28px;
+      padding: 0 8px;
+      border: 0;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 10px;
+    }
+
+    .range-button:hover {
+      color: var(--ink);
+    }
+
+    .range-button.active {
+      background: var(--surface);
+      color: #d4a135;
+      font-weight: 700;
+      box-shadow: 0 1px 4px rgba(20, 32, 27, .1);
+    }
+
+    .history-loading,
+    .history-error {
+      min-height: 220px;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .history-error {
+      gap: 10px;
+      align-content: center;
+      color: #8f3f31;
+      text-align: center;
+    }
+
+    .retry-button {
+      padding: 7px 11px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--ink);
+      cursor: pointer;
+      font-size: 11px;
+    }
+
+    .history-body {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 220px;
+      align-items: stretch;
+      gap: 24px;
+    }
+
+    .history-stats {
+      display: grid;
+      grid-template-columns: 1fr;
+      align-content: center;
+      margin: 0;
+      border-block: 1px solid var(--line);
+    }
+
+    .history-stat {
+      padding: 9px 0;
+    }
+
+    .history-stat + .history-stat {
+      padding-left: 0;
+      border-top: 1px solid var(--line);
+      border-left: 0;
+    }
+
+    .history-stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 9px;
+    }
+
+    .history-stat strong {
+      display: block;
+      margin-top: 4px;
+      font-family: Georgia, serif;
+      font-size: 15px;
+    }
+
+    .history-stat strong.positive {
+      color: #b33a2b;
+    }
+
+    .history-stat strong.negative {
+      color: #d4a135;
+    }
+
+    .nav-chart-wrap {
+      position: relative;
+      min-height: 205px;
+    }
+
+    .nav-chart {
+      width: 100%;
+      height: auto;
+      display: block;
+      aspect-ratio: 720 / 250;
+      overflow: visible;
+    }
+
+    .chart-grid {
+      stroke: #e7ebe8;
+      stroke-width: 1;
+    }
+
+    .chart-axis-label {
+      fill: var(--muted);
+      font-size: 9px;
+    }
+
+    .chart-area {
+      fill: #fef3e0;
+      opacity: .72;
+    }
+
+    .chart-line {
+      fill: none;
+      stroke: #d4a135;
+      stroke-width: 2;
+      stroke-linejoin: round;
+      stroke-linecap: round;
+    }
+
+    .chart-drawdown {
+      fill: none;
+      stroke: #b33a2b;
+      stroke-width: 2.6;
+      stroke-linejoin: round;
+      stroke-linecap: round;
+    }
+
+    .chart-extreme-point {
+      fill: var(--surface);
+      stroke-width: 2.2;
+      pointer-events: none;
+    }
+
+    .chart-extreme-point.max {
+      stroke: #d4a135;
+    }
+
+    .chart-extreme-point.min {
+      stroke: #d4a135;
+    }
+
+    .chart-extreme-label {
+      font-size: 9px;
+      font-weight: 700;
+      pointer-events: none;
+    }
+
+    .chart-extreme-label.max {
+      fill: #d4a135;
+    }
+
+    .chart-extreme-label.min {
+      fill: #d4a135;
+    }
+
+    .chart-cursor {
+      stroke: #8c9892;
+      stroke-width: 1;
+      stroke-dasharray: 3 3;
+      pointer-events: none;
+    }
+
+    .chart-point {
+      fill: var(--surface);
+      stroke: #d4a135;
+      stroke-width: 2;
+      pointer-events: none;
+    }
+
+    .chart-hit {
+      fill: transparent;
+      cursor: crosshair;
+    }
+
+    .chart-tooltip {
+      position: absolute;
+      z-index: 2;
+      min-width: 112px;
+      padding: 7px 9px;
+      border-radius: 5px;
+      background: var(--ink);
+      color: white;
+      font-size: 10px;
+      line-height: 1.55;
+      pointer-events: none;
+      transform: translate(-50%, calc(-100% - 10px));
+      box-shadow: var(--shadow);
+    }
+
+    .chart-tooltip[hidden] {
+      display: none;
+    }
+
+    .history-source {
+      margin-top: 7px;
+      color: var(--muted);
+      text-align: right;
+      font-size: 9px;
     }
 
     .category-summary {
@@ -254,6 +520,12 @@
     @media (max-width: 820px) {
       .principles { grid-template-columns: repeat(2, 1fr); }
       .bond-grid { grid-template-columns: 1fr; }
+      .history-body { grid-template-columns: 1fr; gap: 12px; }
+      .history-stats { grid-template-columns: repeat(2, 1fr); }
+      .history-stat { padding: 11px 12px 11px 0; }
+      .history-stat:nth-child(odd) { padding-left: 0; }
+      .history-stat:nth-child(even) { padding-left: 12px; border-left: 1px solid var(--line); }
+      .history-stat:nth-child(n + 3) { border-top: 1px solid var(--line); }
     }
 
     @media (max-width: 560px) {
@@ -268,6 +540,10 @@
       .principle { min-height: auto; }
       .principle p { margin-top: 8px; }
       .category-summary { grid-template-columns: 1fr; }
+      .history-title-row { display: grid; gap: 8px; }
+      .range-control { width: 100%; grid-auto-columns: 1fr; }
+      .range-button { padding-inline: 3px; }
+      .nav-chart-wrap { min-height: 180px; }
     }
   </style>
 </head>
@@ -313,107 +589,7 @@
     <h2 class="section-title">债券持仓明细</h2>
     <p class="section-lead">按照债券类型和期限进行均衡配置，在控制风险的前提下获取稳健收益。</p>
 
-    <div class="bond-grid">
-      <div class="bond-card">
-        <div class="bond-card-header">
-          <span class="bond-card-title">短期利率债</span>
-          <span class="bond-card-ratio">15%</span>
-        </div>
-        <div class="bond-card-meta">
-          <div class="bond-card-meta-row"><span>期限范围</span><b>0-3年</b></div>
-          <div class="bond-fund-row">
-            <span class="bond-fund-name">平安0-3年期政策性金融债债券A</span>
-            <span class="bond-fund-ratio">15%</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="bond-card">
-        <div class="bond-card-header">
-          <span class="bond-card-title">中期利率债</span>
-          <span class="bond-card-ratio">30%</span>
-        </div>
-        <div class="bond-card-meta">
-          <div class="bond-card-meta-row"><span>期限范围</span><b>3-7年</b></div>
-          <div class="bond-fund-row">
-            <span class="bond-fund-name">永赢邦利债券A</span>
-            <span class="bond-fund-ratio">20%</span>
-          </div>
-          <div class="bond-fund-row">
-            <span class="bond-fund-name">博时裕顺纯债A</span>
-            <span class="bond-fund-ratio">10%</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="bond-card">
-        <div class="bond-card-header">
-          <span class="bond-card-title">长期利率债</span>
-          <span class="bond-card-ratio">15%</span>
-        </div>
-        <div class="bond-card-meta">
-          <div class="bond-card-meta-row"><span>期限范围</span><b>7-10年</b></div>
-          <div class="bond-fund-row">
-            <span class="bond-fund-name">广发中债7-10年国开债A</span>
-            <span class="bond-fund-ratio">10%</span>
-          </div>
-          <div class="bond-fund-row">
-            <span class="bond-fund-name">博时中债7-10年政策性金融债指数A</span>
-            <span class="bond-fund-ratio">5%</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="bond-card">
-        <div class="bond-card-header">
-          <span class="bond-card-title">短期信用债</span>
-          <span class="bond-card-ratio">10%</span>
-        </div>
-        <div class="bond-card-meta">
-          <div class="bond-card-meta-row"><span>期限范围</span><b>90-120天</b></div>
-          <div class="bond-fund-row">
-            <span class="bond-fund-name">兴业稳福120天A</span>
-            <span class="bond-fund-ratio">5%</span>
-          </div>
-          <div class="bond-fund-row">
-            <span class="bond-fund-name">创金合信恒睿90天A</span>
-            <span class="bond-fund-ratio">5%</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="bond-card">
-        <div class="bond-card-header">
-          <span class="bond-card-title">中期信用债</span>
-          <span class="bond-card-ratio">20%</span>
-        </div>
-        <div class="bond-card-meta">
-          <div class="bond-card-meta-row"><span>期限范围</span><b>3-7年</b></div>
-          <div class="bond-fund-row">
-            <span class="bond-fund-name">长盛盛裕纯债D</span>
-            <span class="bond-fund-ratio">10%</span>
-          </div>
-          <div class="bond-fund-row">
-            <span class="bond-fund-name">格林泓鑫纯债A</span>
-            <span class="bond-fund-ratio">10%</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="bond-card">
-        <div class="bond-card-header">
-          <span class="bond-card-title">长期信用债</span>
-          <span class="bond-card-ratio">10%</span>
-        </div>
-        <div class="bond-card-meta">
-          <div class="bond-card-meta-row"><span>期限范围</span><b>7年以上</b></div>
-          <div class="bond-fund-row">
-            <span class="bond-fund-name">富安达富利纯债A</span>
-            <span class="bond-fund-ratio">10%</span>
-          </div>
-        </div>
-      </div>
-    </div>
+    <div class="bond-grid" id="bondGrid"></div>
 
     <div class="category-summary">
       <div class="category-card">
@@ -430,6 +606,390 @@
   </main>
 
   <script>
+    const bondCategories = [
+      {
+        title: '短期利率债',
+        ratio: 15,
+        duration: '0-3年',
+        funds: [
+          { code: '006932', name: '平安0-3年期政策性金融债债券A', ratio: 15 }
+        ]
+      },
+      {
+        title: '中期利率债',
+        ratio: 30,
+        duration: '3-7年',
+        funds: [
+          { code: '008558', name: '永赢邦利债券A', ratio: 20 },
+          { code: '002811', name: '博时裕顺纯债A', ratio: 10 }
+        ]
+      },
+      {
+        title: '长期利率债',
+        ratio: 15,
+        duration: '7-10年',
+        funds: [
+          { code: '003376', name: '广发中债7-10年国开债A', ratio: 10 },
+          { code: '017837', name: '博时中债7-10年政策性金融债指数A', ratio: 5 }
+        ]
+      },
+      {
+        title: '短期信用债',
+        ratio: 10,
+        duration: '90-120天',
+        funds: [
+          { code: '020387', name: '兴业稳福120天A', ratio: 5 },
+          { code: '022807', name: '创金合信恒睿90天A', ratio: 5 }
+        ]
+      },
+      {
+        title: '中期信用债',
+        ratio: 20,
+        duration: '3-7年',
+        funds: [
+          { code: '051736', name: '长盛盛裕纯债D', ratio: 10 },
+          { code: '006184', name: '格林泓鑫纯债A', ratio: 10 }
+        ]
+      },
+      {
+        title: '长期信用债',
+        ratio: 10,
+        duration: '7年以上',
+        funds: [
+          { code: '007520', name: '富安达富利纯债A', ratio: 10 }
+        ]
+      }
+    ];
+
+    const historyRanges = [
+      ['1m', '1月', 1],
+      ['3m', '3月', 3],
+      ['6m', '6月', 6],
+      ['1y', '1年', 12],
+      ['3y', '3年', 36],
+      ['5y', '5年', 60],
+      ['all', '成立来', null]
+    ];
+
+    const historyState = new Map();
+    const expandedFunds = new Set();
+
+    function renderBondGrid() {
+      const grid = document.querySelector('#bondGrid');
+      grid.innerHTML = bondCategories.map(category => {
+        const fundRows = category.funds.map(fund => {
+          const fundId = `fund-${fund.code}`;
+          const isExpanded = expandedFunds.has(fundId);
+          return `
+            <div class="bond-fund-row" data-fund-toggle="${fundId}">
+              <span>
+                <span class="bond-fund-name">${escapeHtml(fund.name)}</span>
+                <span class="bond-fund-code">${fund.code}</span>
+              </span>
+              <span class="bond-fund-ratio">${fund.ratio}%</span>
+            </div>
+            <div class="bond-fund-details" id="${fundId}" ${isExpanded ? '' : 'hidden'}>
+              <section class="history-panel" id="history-${fund.code}" aria-label="${escapeHtml(fund.name)}历史净值">
+                <div class="history-loading">等待加载历史净值...</div>
+              </section>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <div class="bond-card">
+            <div class="bond-card-header">
+              <span class="bond-card-title">${category.title}</span>
+              <span class="bond-card-ratio">${category.ratio}%</span>
+            </div>
+            <div class="bond-card-meta">
+              <div class="bond-card-meta-row"><span>期限范围</span><b>${category.duration}</b></div>
+              ${fundRows}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      document.querySelectorAll('[data-fund-toggle]').forEach(row => {
+        row.addEventListener('click', () => {
+          const fundId = row.dataset.fundToggle;
+          const details = document.querySelector(`#${fundId}`);
+          const isExpanded = !details.hidden;
+
+          if (isExpanded) {
+            details.hidden = true;
+            expandedFunds.delete(fundId);
+          } else {
+            details.hidden = false;
+            expandedFunds.add(fundId);
+            const code = fundId.replace('fund-', '');
+            if (!historyState.has(code)) {
+              loadHistory(code);
+            }
+          }
+        });
+      });
+    }
+
+    async function loadHistory(code, forceRefresh = false) {
+      const panel = document.querySelector(`#history-${code}`);
+      const previous = historyState.get(code);
+      historyState.set(code, { ...previous, status: 'loading', range: previous?.range || '1y' });
+      panel.innerHTML = `<div class="history-loading">正在获取历史净值...</div>`;
+
+      try {
+        const response = await fetch(`/api/funds/${code}/history${forceRefresh ? '?refresh=1' : ''}`);
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.detail || payload.error || '数据服务暂时不可用');
+        historyState.set(code, { status: 'ready', range: previous?.range || '1y', data: payload });
+        renderHistory(code);
+      } catch (error) {
+        const message = friendlyHistoryError(error.message);
+        historyState.set(code, { status: 'error', range: previous?.range || '1y', error: message });
+        panel.innerHTML = `<div class="history-error"><span>${escapeHtml(message)}</span><button class="retry-button" type="button" data-history-retry="${code}">重新加载</button></div>`;
+        panel.querySelector('[data-history-retry]').addEventListener('click', () => loadHistory(code, true));
+      }
+    }
+
+    function renderHistory(code) {
+      const entry = historyState.get(code);
+      const panel = document.querySelector(`#history-${code}`);
+      const availableRanges = getAvailableHistoryRanges(entry.data.points);
+      if (!availableRanges.some(([value]) => value === entry.range)) entry.range = 'all';
+      const points = filterHistoryPoints(entry.data.points, entry.range);
+
+      if (points.length < 2) {
+        panel.innerHTML = `<div class="history-error">该时间范围内没有足够的净值数据</div>`;
+        return;
+      }
+
+      const firstValue = chartValue(points[0]);
+      const latest = points[points.length - 1];
+      const latestValue = chartValue(latest);
+      const returnRate = (latestValue / firstValue - 1) * 100;
+      const values = points.map(chartValue);
+      const lowIndex = values.indexOf(Math.min(...values));
+      const highIndex = values.indexOf(Math.max(...values));
+      const drawdown = calculateMaxDrawdown(points);
+      const returnClass = returnRate > 0 ? 'positive' : returnRate < 0 ? 'negative' : '';
+      const ranges = availableRanges.map(([value, label]) =>
+        `<button type="button" class="range-button ${entry.range === value ? 'active' : ''}" data-history-range="${value}" aria-pressed="${entry.range === value}">${label}</button>`
+      ).join('');
+
+      panel.innerHTML = `
+        <div class="history-head">
+          <div class="history-title-row">
+            <h3 class="history-title">历史净值走势</h3>
+            <div class="range-control" aria-label="走势图时间范围">${ranges}</div>
+          </div>
+        </div>
+        <div class="history-body">
+          ${buildChart(code, points)}
+          <div class="history-stats">
+            <div class="history-stat"><span>区间收益</span><strong class="${returnClass}">${formatPercent(returnRate)}</strong></div>
+            <div class="history-stat"><span>最大回撤</span><strong class="negative">${formatPercent(drawdown.rate)}</strong></div>
+            <div class="history-stat"><span>最大回撤修复时间</span><strong>${drawdown.recovery}</strong></div>
+            <div class="history-stat"><span>区间最高点日期</span><strong>${points[highIndex].date}</strong></div>
+            <div class="history-stat"><span>区间最低点日期</span><strong>${points[lowIndex].date}</strong></div>
+          </div>
+        </div>
+        <div class="history-source">净值日期 ${latest.date} · 数据来源 ${escapeHtml(entry.data.source)}${entry.data.warning ? ' · 当前使用缓存' : ''}</div>
+      `;
+
+      panel.querySelectorAll('[data-history-range]').forEach(button => {
+        button.addEventListener('click', () => {
+          entry.range = button.dataset.historyRange;
+          renderHistory(code);
+        });
+      });
+      bindChartPointer(code, points);
+    }
+
+    function buildChart(code, points) {
+      const width = 720;
+      const height = 250;
+      const left = 52;
+      const right = 706;
+      const top = 16;
+      const bottom = 216;
+      const base = chartValue(points[0]);
+      const returns = points.map(point => (chartValue(point) / base - 1) * 100);
+      let minimum = Math.min(...returns);
+      let maximum = Math.max(...returns);
+      const padding = Math.max((maximum - minimum) * .08, .25);
+      minimum -= padding;
+      maximum += padding;
+      const x = index => left + index / Math.max(points.length - 1, 1) * (right - left);
+      const y = value => top + (maximum - value) / (maximum - minimum) * (bottom - top);
+      const chartPoints = downsample(returns, 600);
+      const line = chartPoints.map(item => `${x(item.index).toFixed(2)},${y(item.value).toFixed(2)}`).join(' ');
+      const drawdown = calculateMaxDrawdown(points);
+      const drawdownValues = returns.slice(drawdown.peakIndex, drawdown.troughIndex + 1);
+      const drawdownLine = drawdown.rate < 0
+        ? downsample(drawdownValues, 240).map(item => `${x(item.index + drawdown.peakIndex).toFixed(2)},${y(item.value).toFixed(2)}`).join(' ')
+        : '';
+      const highestIndex = returns.indexOf(Math.max(...returns));
+      const lowestIndex = returns.indexOf(Math.min(...returns));
+      const extremeMarker = (index, label, className) => {
+        const markerX = x(index);
+        const markerY = y(returns[index]);
+        const labelY = className === 'max' ? markerY - 9 : markerY + 17;
+        const anchor = markerX < left + 28 ? 'start' : markerX > right - 28 ? 'end' : 'middle';
+        return `<circle class="chart-extreme-point ${className}" cx="${markerX}" cy="${markerY}" r="4"></circle><text class="chart-extreme-label ${className}" x="${markerX}" y="${labelY}" text-anchor="${anchor}">${label}</text>`;
+      };
+      const area = `${left},${bottom} ${line} ${right},${bottom}`;
+      const grid = [0, 1, 2, 3].map(index => {
+        const value = maximum - index / 3 * (maximum - minimum);
+        const vertical = y(value);
+        return `<line class="chart-grid" x1="${left}" y1="${vertical}" x2="${right}" y2="${vertical}"></line><text class="chart-axis-label" x="${left - 7}" y="${vertical + 3}" text-anchor="end">${formatPercent(value)}</text>`;
+      }).join('');
+
+      return `<div class="nav-chart-wrap" data-chart-wrap="${code}">
+        <svg class="nav-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="基金历史累计净值走势图">
+          ${grid}
+          <polygon class="chart-area" points="${area}"></polygon>
+          <polyline class="chart-line" points="${line}"></polyline>
+          ${drawdownLine ? `<polyline class="chart-drawdown" points="${drawdownLine}"></polyline>` : ''}
+          ${extremeMarker(highestIndex, 'MAX', 'max')}
+          ${extremeMarker(lowestIndex, 'MIN', 'min')}
+          <text class="chart-axis-label" x="${left}" y="239">${points[0].date}</text>
+          <text class="chart-axis-label" x="${right}" y="239" text-anchor="end">${points[points.length - 1].date}</text>
+          <line class="chart-cursor" data-chart-cursor x1="${left}" y1="${top}" x2="${left}" y2="${bottom}" hidden></line>
+          <circle class="chart-point" data-chart-point cx="${left}" cy="${y(returns[0])}" r="4" hidden></circle>
+          <rect class="chart-hit" data-chart-hit x="${left}" y="${top}" width="${right - left}" height="${bottom - top}"></rect>
+        </svg>
+        <div class="chart-tooltip" data-chart-tooltip hidden></div>
+      </div>`;
+    }
+
+    function bindChartPointer(code, points) {
+      const wrap = document.querySelector(`[data-chart-wrap="${code}"]`);
+      if (!wrap) return;
+      const svg = wrap.querySelector('svg');
+      const hit = wrap.querySelector('[data-chart-hit]');
+      const cursor = wrap.querySelector('[data-chart-cursor]');
+      const marker = wrap.querySelector('[data-chart-point]');
+      const tooltip = wrap.querySelector('[data-chart-tooltip]');
+      const left = 52;
+      const right = 706;
+      const top = 16;
+      const bottom = 216;
+      const base = chartValue(points[0]);
+      const returns = points.map(point => (chartValue(point) / base - 1) * 100);
+      const rawMinimum = Math.min(...returns);
+      const rawMaximum = Math.max(...returns);
+      const padding = Math.max((rawMaximum - rawMinimum) * .08, .25);
+      const minimum = rawMinimum - padding;
+      const maximum = rawMaximum + padding;
+
+      function move(event) {
+        const rect = svg.getBoundingClientRect();
+        const viewX = (event.clientX - rect.left) / rect.width * 720;
+        const ratio = Math.max(0, Math.min(1, (viewX - left) / (right - left)));
+        const index = Math.round(ratio * (points.length - 1));
+        const x = left + index / (points.length - 1) * (right - left);
+        const y = top + (maximum - returns[index]) / (maximum - minimum) * (bottom - top);
+        cursor.setAttribute('x1', x);
+        cursor.setAttribute('x2', x);
+        cursor.hidden = false;
+        marker.setAttribute('cx', x);
+        marker.setAttribute('cy', y);
+        marker.hidden = false;
+        tooltip.innerHTML = `${points[index].date}<br>单位净值 ${points[index].nav.toFixed(4)}<br>区间 ${formatPercent(returns[index])}`;
+        tooltip.style.left = `${x / 720 * 100}%`;
+        tooltip.style.top = `${y / 250 * 100}%`;
+        tooltip.hidden = false;
+      }
+
+      function leave() {
+        cursor.hidden = true;
+        marker.hidden = true;
+        tooltip.hidden = true;
+      }
+
+      hit.addEventListener('pointermove', move);
+      hit.addEventListener('pointerleave', leave);
+    }
+
+    function filterHistoryPoints(points, range) {
+      if (range === 'all' || !points.length) return points;
+      const rangeConfig = historyRanges.find(([value]) => value === range);
+      if (!rangeConfig || rangeConfig[2] === null) return points;
+      const cutoff = subtractCalendarMonths(points[points.length - 1].date, rangeConfig[2]);
+      return points.filter(point => point.date >= cutoff);
+    }
+
+    function getAvailableHistoryRanges(points) {
+      if (!points.length) return historyRanges.filter(([value]) => value === 'all');
+      const firstDate = points[0].date;
+      const lastDate = points[points.length - 1].date;
+      return historyRanges.filter(([, , months]) => months === null || firstDate <= subtractCalendarMonths(lastDate, months));
+    }
+
+    function subtractCalendarMonths(dateText, months) {
+      const [year, month, day] = dateText.split('-').map(Number);
+      const targetMonthIndex = year * 12 + month - 1 - months;
+      const targetYear = Math.floor(targetMonthIndex / 12);
+      const targetMonth = targetMonthIndex - targetYear * 12;
+      const lastDay = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate();
+      return `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(Math.min(day, lastDay)).padStart(2, '0')}`;
+    }
+
+    function chartValue(point) {
+      return Number.isFinite(point.accumulatedNav) ? point.accumulatedNav : point.nav;
+    }
+
+    function calculateMaxDrawdown(points) {
+      const values = points.map(chartValue);
+      let peakIndex = 0;
+      let drawdownPeakIndex = 0;
+      let troughIndex = 0;
+      let maximumDrawdown = 0;
+
+      values.forEach((value, index) => {
+        if (value > values[peakIndex]) peakIndex = index;
+        const rate = (value / values[peakIndex] - 1) * 100;
+        if (rate < maximumDrawdown) {
+          maximumDrawdown = rate;
+          drawdownPeakIndex = peakIndex;
+          troughIndex = index;
+        }
+      });
+
+      if (maximumDrawdown === 0) return { rate: 0, recovery: '0 天', peakIndex: 0, troughIndex: 0 };
+      const recoveryIndex = values.findIndex((value, index) => index > troughIndex && value >= values[drawdownPeakIndex]);
+      if (recoveryIndex === -1) return { rate: maximumDrawdown, recovery: '修复中', peakIndex: drawdownPeakIndex, troughIndex };
+      const troughDate = new Date(`${points[troughIndex].date}T00:00:00`);
+      const recoveryDate = new Date(`${points[recoveryIndex].date}T00:00:00`);
+      const recoveryDays = Math.round((recoveryDate - troughDate) / 86400000);
+      return { rate: maximumDrawdown, recovery: `${recoveryDays} 天`, peakIndex: drawdownPeakIndex, troughIndex };
+    }
+
+    function downsample(values, limit) {
+      if (values.length <= limit) return values.map((value, index) => ({ value, index }));
+      const result = [];
+      for (let outputIndex = 0; outputIndex < limit; outputIndex += 1) {
+        const index = Math.round(outputIndex / (limit - 1) * (values.length - 1));
+        result.push({ value: values[index], index });
+      }
+      return result;
+    }
+
+    function formatPercent(value) {
+      return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
+    }
+
+    function friendlyHistoryError(message) {
+      if (/NameResolutionError|Could not resolve|nodename nor servname|Max retries exceeded/i.test(message)) {
+        return '历史数据源无法连接。请检查网络或 DNS 后点击"重新加载"。';
+      }
+      return message.length > 180 ? `${message.slice(0, 177)}...` : message;
+    }
+
     function renderAllocationDonut() {
       const container = document.querySelector('#allocationDonut');
       if (!container) return;
@@ -478,6 +1038,7 @@
     }
 
     renderAllocationDonut();
+    renderBondGrid();
   </script>
 </body>
 </html>
