@@ -325,38 +325,35 @@
 
     .history-body {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 220px;
-      align-items: stretch;
-      gap: 24px;
+      grid-template-columns: 1fr;
+      gap: 8px;
     }
 
     .history-stats {
       display: grid;
-      grid-template-columns: 1fr;
-      align-content: center;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0;
       margin: 0;
       border-block: 1px solid var(--line);
     }
 
     .history-stat {
-      padding: 9px 0;
+      padding: 12px 14px;
     }
 
     .history-stat + .history-stat {
-      padding-left: 0;
-      border-top: 1px solid var(--line);
-      border-left: 0;
+      border-left: 1px solid var(--line);
     }
 
     .history-stat span {
       display: block;
       color: var(--muted);
-      font-size: 9px;
+      font-size: 10px;
     }
 
     .history-stat strong {
       display: block;
-      margin-top: 4px;
+      margin-top: 5px;
       font-family: Georgia, serif;
       font-size: 15px;
     }
@@ -371,14 +368,14 @@
 
     .nav-chart-wrap {
       position: relative;
-      min-height: 205px;
+      min-height: 360px;
     }
 
     .nav-chart {
       width: 100%;
       height: auto;
       display: block;
-      aspect-ratio: 720 / 250;
+      aspect-ratio: 720 / 360;
       overflow: visible;
     }
 
@@ -520,12 +517,10 @@
     @media (max-width: 820px) {
       .principles { grid-template-columns: repeat(2, 1fr); }
       .bond-grid { grid-template-columns: 1fr; }
-      .history-body { grid-template-columns: 1fr; gap: 12px; }
-      .history-stats { grid-template-columns: repeat(2, 1fr); }
-      .history-stat { padding: 11px 12px 11px 0; }
-      .history-stat:nth-child(odd) { padding-left: 0; }
-      .history-stat:nth-child(even) { padding-left: 12px; border-left: 1px solid var(--line); }
-      .history-stat:nth-child(n + 3) { border-top: 1px solid var(--line); }
+      .history-body { gap: 12px; }
+      .history-stats { grid-template-columns: repeat(3, 1fr); }
+      .history-stat:nth-child(3n + 1) { padding-left: 0; }
+      .history-stat:nth-child(n + 4) { border-top: 1px solid var(--line); }
     }
 
     @media (max-width: 560px) {
@@ -543,7 +538,13 @@
       .history-title-row { display: grid; gap: 8px; }
       .range-control { width: 100%; grid-auto-columns: 1fr; }
       .range-button { padding-inline: 3px; }
-      .nav-chart-wrap { min-height: 180px; }
+      .nav-chart-wrap { min-height: 280px; }
+      .history-stats { grid-template-columns: repeat(2, 1fr); }
+      .history-stat { padding: 10px 8px; }
+      .history-stat:nth-child(3n + 1) { padding-left: 8px; }
+      .history-stat:nth-child(odd) { padding-left: 0; }
+      .history-stat:nth-child(even) { padding-left: 8px; }
+      .history-stat:nth-child(n + 3) { border-top: 1px solid var(--line); }
     }
   </style>
 </head>
@@ -807,11 +808,11 @@
 
     function buildChart(code, points) {
       const width = 720;
-      const height = 250;
+      const height = 360;
       const left = 52;
       const right = 706;
       const top = 16;
-      const bottom = 216;
+      const bottom = 330;
       const base = chartValue(points[0]);
       const returns = points.map(point => (chartValue(point) / base - 1) * 100);
       let minimum = Math.min(...returns);
@@ -852,8 +853,8 @@
           ${drawdownLine ? `<polyline class="chart-drawdown" points="${drawdownLine}"></polyline>` : ''}
           ${extremeMarker(highestIndex, 'MAX', 'max')}
           ${extremeMarker(lowestIndex, 'MIN', 'min')}
-          <text class="chart-axis-label" x="${left}" y="239">${points[0].date}</text>
-          <text class="chart-axis-label" x="${right}" y="239" text-anchor="end">${points[points.length - 1].date}</text>
+          <text class="chart-axis-label" x="${left}" y="350">${points[0].date}</text>
+          <text class="chart-axis-label" x="${right}" y="350" text-anchor="end">${points[points.length - 1].date}</text>
           <line class="chart-cursor" data-chart-cursor x1="${left}" y1="${top}" x2="${left}" y2="${bottom}" hidden></line>
           <circle class="chart-point" data-chart-point cx="${left}" cy="${y(returns[0])}" r="4" hidden></circle>
           <rect class="chart-hit" data-chart-hit x="${left}" y="${top}" width="${right - left}" height="${bottom - top}"></rect>
@@ -873,7 +874,7 @@
       const left = 52;
       const right = 706;
       const top = 16;
-      const bottom = 216;
+      const bottom = 330;
       const base = chartValue(points[0]);
       const returns = points.map(point => (chartValue(point) / base - 1) * 100);
       const rawMinimum = Math.min(...returns);
@@ -897,7 +898,7 @@
         marker.hidden = false;
         tooltip.innerHTML = `${points[index].date}<br>单位净值 ${points[index].nav.toFixed(4)}<br>区间 ${formatPercent(returns[index])}`;
         tooltip.style.left = `${x / 720 * 100}%`;
-        tooltip.style.top = `${y / 250 * 100}%`;
+        tooltip.style.top = `${y / 360 * 100}%`;
         tooltip.hidden = false;
       }
 
