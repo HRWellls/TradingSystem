@@ -131,7 +131,7 @@
 
     .summary {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       margin-bottom: 32px;
       border-block: 1px solid var(--line);
     }
@@ -197,8 +197,9 @@
     }
 
     .bond-fund-row {
-      display: flex;
-      justify-content: space-between;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: 14px;
       align-items: center;
       padding-top: 8px;
       border-top: 1px solid var(--line);
@@ -232,7 +233,10 @@
       color: var(--ink);
       font-size: 13px;
       font-weight: 700;
+      white-space: nowrap;
     }
+
+    .bond-fund-amount { color: var(--muted); font-size: 12px; white-space: nowrap; }
 
     .bond-fund-details {
       margin-top: 16px;
@@ -517,6 +521,7 @@
     @media (max-width: 820px) {
       .principles { grid-template-columns: repeat(2, 1fr); }
       .bond-grid { grid-template-columns: 1fr; }
+      .summary { grid-template-columns: repeat(3, 1fr); }
       .history-body { gap: 12px; }
       .history-stats { grid-template-columns: repeat(3, 1fr); }
       .history-stat:nth-child(3n + 1) { padding-left: 0; }
@@ -583,8 +588,9 @@
     </section>
 
     <section class="summary" aria-label="债券配置概览">
-      <div class="summary-item"><div class="summary-label">利率债合计</div><div class="summary-value">60 <small>%</small></div></div>
-      <div class="summary-item"><div class="summary-label">信用债合计</div><div class="summary-value">40 <small>%</small></div></div>
+      <div class="summary-item"><div class="summary-label">债券配置总额</div><div class="summary-value">400,000 <small>元</small></div></div>
+      <div class="summary-item"><div class="summary-label">利率债合计</div><div class="summary-value">240,000 <small>元</small></div></div>
+      <div class="summary-item"><div class="summary-label">信用债合计</div><div class="summary-value">160,000 <small>元</small></div></div>
     </section>
 
     <h2 class="section-title">债券持仓明细</h2>
@@ -661,6 +667,7 @@
         ]
       }
     ];
+    const BOND_TOTAL = 400000;
 
     const historyRanges = [
       ['1m', '1月', 1],
@@ -687,6 +694,7 @@
                 <span class="bond-fund-name">${escapeHtml(fund.name)}</span>
                 <span class="bond-fund-code">${fund.code}</span>
               </span>
+              <span class="bond-fund-amount">${(BOND_TOTAL * fund.ratio / 100).toLocaleString('zh-CN')} 元</span>
               <span class="bond-fund-ratio">${fund.ratio}%</span>
             </div>
             <div class="bond-fund-details" id="${fundId}" ${isExpanded ? '' : 'hidden'}>

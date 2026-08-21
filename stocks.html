@@ -321,19 +321,19 @@
     .stock-table { width: 100%; border-collapse: collapse; background: var(--surface); }
     .stock-table th, .stock-table td { padding: 13px 14px; border-bottom: 1px solid var(--line); text-align: left; font-size: 13px; }
     .stock-table th { color: var(--muted); font-size: 11px; font-weight: 600; }
-    .stock-table td:nth-child(2), .stock-table th:nth-child(2) { text-align: center; }
+    .stock-table td:nth-child(2), .stock-table th:nth-child(2), .stock-table td:nth-child(3), .stock-table th:nth-child(3) { text-align: center; }
     .stock-table td:last-child, .stock-table th:last-child { text-align: right; }
     .stock-link { display: inline-flex; align-items: center; gap: 7px; color: var(--ink); font-weight: 700; text-decoration: none; }
     .stock-link:hover { color: var(--green); }
     .stock-link::after { content: "→"; color: var(--green); font-size: 12px; }
     .stock-code { display: block; margin-top: 3px; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9px; }
-    .stock-status { display: inline-grid; grid-template-columns: repeat(3, 74px); gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: 6px; background: #f5f7f5; }
+    .stock-status { display: inline-grid; grid-template-columns: repeat(4, 74px); gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: 6px; background: #f5f7f5; }
     .stock-choice { position: relative; }
     .stock-choice input { position: absolute; opacity: 0; pointer-events: none; }
     .stock-choice label { min-height: 30px; display: grid; place-items: center; border-radius: 4px; color: var(--muted); font-size: 11px; cursor: pointer; }
     .stock-choice input:checked + label { background: var(--surface); color: var(--green); font-weight: 700; box-shadow: 0 1px 4px rgba(20, 32, 27, .1); }
     .stock-choice input:focus-visible + label { outline: 2px solid var(--green); }
-    .retirement-rules { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 18px; border-block: 1px solid var(--line); }
+    .retirement-rules { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 18px; border-block: 1px solid var(--line); }
     .retirement-rule { padding: 16px 0; font-size: 12px; }
     .retirement-rule + .retirement-rule { padding-left: 18px; border-left: 1px solid var(--line); }
     .retirement-rule b { display: block; margin-top: 5px; font-size: 15px; }
@@ -406,10 +406,10 @@
       .retirement-rules { grid-template-columns: 1fr; }
       .retirement-rule + .retirement-rule { padding-left: 0; border-top: 1px solid var(--line); border-left: 0; }
       .stock-table thead { display: none; }
-      .stock-table tr { display: grid; grid-template-columns: 1fr auto; padding: 13px 0; border-bottom: 1px solid var(--line); }
+      .stock-table tr { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; padding: 13px 0; border-bottom: 1px solid var(--line); }
       .stock-table td { padding: 3px 10px; border: 0; }
       .stock-table td:last-child { grid-column: 1 / -1; margin-top: 7px; text-align: left; }
-      .stock-status { width: 100%; grid-template-columns: repeat(3, 1fr); }
+      .stock-status { width: 100%; grid-template-columns: repeat(4, 1fr); }
     }
   </style>
 </head>
@@ -460,12 +460,13 @@
       <h2 class="section-title">养老高股息</h2>
       <p class="section-lead">个股部分采用目标股息率触发买入，不记录具体持仓数量，也不纳入上方基金定投金额汇总。</p>
       <table class="stock-table">
-        <thead><tr><th>标的</th><th>目标股息率</th><th>当前状态</th></tr></thead>
+        <thead><tr><th>标的</th><th>目标股息率</th><th>建仓触发股息率</th><th>当前状态</th></tr></thead>
         <tbody id="stockBody"></tbody>
       </table>
       <div class="retirement-rules">
-        <div class="retirement-rule">首次买入<b>股息率达标，买入 20,000 元</b></div>
-        <div class="retirement-rule">再次补仓<b>较买入价再跌 10%，补 20,000 元</b></div>
+        <div class="retirement-rule">小额建仓<b>股息率达到目标值 - 1%，买入 5,000 元</b></div>
+        <div class="retirement-rule">一倍建仓<b>股息率达到目标值，买入 20,000 元</b></div>
+        <div class="retirement-rule">两倍建仓<b>较买入价再跌 10%，补 20,000 元</b></div>
         <div class="retirement-rule">持有周期<b>10 年以上</b></div>
       </div>
     </section>
@@ -541,7 +542,9 @@
 
     let retirementState = loadRetirementState();
     retirementAssets.forEach(asset => {
-      if (!['waiting', 'opened', 'doubled'].includes(retirementState[asset.id])) retirementState[asset.id] = 'waiting';
+      if (retirementState[asset.id] === 'opened') retirementState[asset.id] = 'small';
+      if (retirementState[asset.id] === 'doubled') retirementState[asset.id] = 'double';
+      if (!['waiting', 'small', 'target', 'double'].includes(retirementState[asset.id])) retirementState[asset.id] = 'waiting';
     });
 
     function loadAssetDetailsState() {
@@ -1272,9 +1275,10 @@
 
     function renderRetirement() {
       document.querySelector('#stockBody').innerHTML = retirementAssets.map(asset => {
-        const statuses = [['waiting', '未达标'], ['opened', '已建仓'], ['doubled', '双倍建仓']];
+        const statuses = [['waiting', '未建仓'], ['small', '小额建仓'], ['target', '一倍建仓'], ['double', '两倍建仓']];
         const choices = statuses.map(([value, label]) => `<span class="stock-choice"><input type="radio" id="stock-${asset.id}-${value}" name="stock-${asset.id}" data-stock="${asset.id}" value="${value}" ${retirementState[asset.id] === value ? 'checked' : ''}><label for="stock-${asset.id}-${value}">${label}</label></span>`).join('');
-        return `<tr><td><a class="stock-link" href="/dividend-score.html?code=${asset.code}">${asset.name}</a><span class="stock-code">${asset.code}</span></td><td>${asset.yield}%</td><td><span class="stock-status" role="radiogroup" aria-label="${asset.name}当前状态">${choices}</span></td></tr>`;
+        const triggerYield = (asset.yield - 1).toFixed(1).replace(/\.0$/, '');
+        return `<tr><td><a class="stock-link" href="/dividend-score.html?code=${asset.code}">${asset.name}</a><span class="stock-code">${asset.code}</span></td><td>${asset.yield}%</td><td>${triggerYield}%</td><td><span class="stock-status" role="radiogroup" aria-label="${asset.name}当前状态">${choices}</span></td></tr>`;
       }).join('');
       document.querySelectorAll('input[data-stock]').forEach(input => {
         input.addEventListener('change', event => {
